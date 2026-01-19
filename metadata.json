@@ -1,0 +1,8 @@
+
+{
+  "name": "QR Time Control Pro",
+  "description": "A professional time tracking application based on QR code scanning for employees and administrators.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
