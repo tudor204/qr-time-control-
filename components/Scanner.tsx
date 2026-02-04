@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
-// Usamos esta librería moderna y ligera para el escaneo
-import { Scanner as QrScanner, IDetectedBarcode } from '@yudiel/react-qr-scanner';
+import React, { useEffect, useRef, useState } from 'react';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 
 interface ScannerProps {
   onScan: (code: string) => void;
@@ -8,95 +7,125 @@ interface ScannerProps {
 }
 
 const Scanner: React.FC<ScannerProps> = ({ onScan, onCancel }) => {
-  const [active, setActive] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const scannedRef = useRef(false);
+  const startedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const [cameraPermission, setCameraPermission] = useState<boolean>(true);
 
   useEffect(() => {
-    // Pequeño delay para la animación de entrada
-    const timer = setTimeout(() => setActive(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
+    if (startedRef.current) return;
+    startedRef.current = true;
 
-  const handleScan = (detectedCodes: IDetectedBarcode[]) => {
-    if (detectedCodes && detectedCodes.length > 0) {
-      // Evitar lecturas múltiples muy rápidas si es necesario
-      onScan(detectedCodes[0].rawValue);
-    }
-  };
+    const reader = new BrowserMultiFormatReader();
+    readerRef.current = reader;
 
-  const handleError = (err: any) => {
-    console.error(err);
-    setError("No se pudo acceder a la cámara.");
-    setCameraPermission(false);
-  };
+    // CONFIGURACIÓN DE VIDEO FLEXIBLE
+    const constraints: MediaStreamConstraints = {
+      video: {
+        facingMode: { ideal: 'environment' }, // Intenta trasera, si no, usa la que haya
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      }
+    };
+
+    // En lugar de undefined, usamos decodeFromConstraints para mayor compatibilidad móvil
+    reader
+      .decodeFromConstraints(
+        constraints,
+        videoRef.current!,
+        (result) => {
+          if (result && !scannedRef.current) {
+            scannedRef.current = true;
+            onScan(result.getText());
+          }
+        }
+      )
+      .then((controls) => {
+        // ZXing maneja el stream internamente, pero lo guardamos para limpieza manual si fuera necesario
+        // @ts-ignore - Algunas versiones de ZXing no exponen el stream directamente en controls
+        if (videoRef.current?.srcObject) {
+           streamRef.current = videoRef.current.srcObject as MediaStream;
+        }
+      })
+      .catch((err) => {
+        console.error("Error de cámara:", err);
+        setError('No se pudo acceder a la cámara. Asegúrate de dar permisos.');
+      });
+
+    return () => {
+      // Limpieza exhaustiva
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      readerRef.current = null;
+      startedRef.current = false;
+    };
+  }, [onScan]);
 
   return (
-    <div className={`fixed inset-0 bg-black flex flex-col items-center justify-center z-50 p-6 transition-opacity duration-300 ${active ? 'opacity-100' : 'opacity-0'}`}>
+    <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-[100] p-6 animate-in fade-in duration-300">
       
-      {/* Header */}
-      <div className="absolute top-8 left-0 right-0 text-center z-20">
-        <p className="text-blue-400 text-sm font-semibold uppercase tracking-wide mb-2">Escáner de Acceso</p>
-        <h2 className="text-2xl font-bold text-white">Lectura de Código QR</h2>
+      <div className="absolute top-8 text-center z-20">
+        <p className="text-blue-400 text-xs font-black uppercase tracking-widest mb-2">
+          Escáner Universal
+        </p>
+        <h2 className="text-2xl font-bold text-white">Lectura QR</h2>
       </div>
 
-      {/* Zona del Escáner */}
-      <div className="relative w-full max-w-[280px] aspect-square rounded-lg overflow-hidden mb-12 bg-black">
+      <div className="relative w-full max-w-[320px] aspect-square rounded-3xl overflow-hidden mb-12 bg-gray-900 border-2 border-white/10 shadow-2xl">
         
-        {/* Bordes decorativos (UI original) */}
-        <div className="absolute top-0 left-0 w-full h-full border-2 border-blue-400/30 rounded-lg z-10 pointer-events-none"></div>
-        <div className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-blue-400 rounded-tl z-20"></div>
-        <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-blue-400 rounded-tr z-20"></div>
-        <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 border-blue-400 rounded-bl z-20"></div>
-        <div className="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-blue-400 rounded-br z-20"></div>
+        {/* VIDEO REAL */}
+        <video
+          ref={videoRef}
+          className="w-full h-full object-cover"
+          muted
+          playsInline
+        />
 
-        {/* Línea de escaneo animada */}
-        <div className="absolute inset-x-0 h-0.5 bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.8)] animate-[scan_2s_infinite] z-20"></div>
+        {/* UI DE ESCANEO (Línea y esquinas) */}
+        <div className="absolute inset-0 z-10 pointer-events-none">
+          <div className="absolute top-6 left-6 w-8 h-8 border-t-4 border-l-4 border-blue-500 rounded-tl"></div>
+          <div className="absolute top-6 right-6 w-8 h-8 border-t-4 border-r-4 border-blue-500 rounded-tr"></div>
+          <div className="absolute bottom-6 left-6 w-8 h-8 border-b-4 border-l-4 border-blue-500 rounded-bl"></div>
+          <div className="absolute bottom-6 right-6 w-8 h-8 border-b-4 border-r-4 border-blue-500 rounded-br"></div>
+          
+          {/* Línea de escaneo animada */}
+          <div className="absolute inset-x-0 h-1 bg-blue-400 shadow-[0_0_15px_rgba(96,165,250,1)] animate-scan-line"></div>
+        </div>
 
-        {/* Componente Real de Cámara */}
-        {cameraPermission ? (
-          <div className="w-full h-full object-cover">
-            <QrScanner
-              onScan={handleScan}
-              onError={handleError}
-              // constraints={{ facingMode: 'environment' }} // Usa la cámara trasera por defecto
-              styles={{ container: { width: '100%', height: '100%' } }}
-              components={{
-                 audio: false, // Desactiva sonido si no se requiere
-                 onOff: false, // Oculta botón de encendido por defecto de la lib
-                 tracker: false // Oculta el cuadro verde por defecto de la lib
-              }}
-            />
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full bg-gray-900 text-white p-4 text-center">
-            <i className="fas fa-exclamation-triangle text-3xl text-yellow-500 mb-2"></i>
-            <p className="text-sm">{error || "Permiso denegado"}</p>
+        {error && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 text-white p-6 text-center z-30">
+            <span className="text-3xl mb-4">⚠️</span>
+            <p className="text-sm font-medium text-red-400">{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-4 text-xs text-blue-400 underline"
+            >
+              Reintentar
+            </button>
           </div>
         )}
       </div>
-      
-      {/* Instrucciones */}
-      <p className="text-center text-gray-300 text-sm font-semibold mb-10 max-w-xs z-20">
-        Apunta el código QR al escáner para registrar tu acceso
-      </p>
-      
-      {/* Botones */}
-      <div className="flex flex-col gap-4 w-full max-w-sm z-20">
-        <button 
-          onClick={onCancel}
-          className="w-full py-3 text-gray-300 font-semibold uppercase tracking-wide text-sm hover:text-white transition bg-white/10 rounded-lg backdrop-blur-md border border-white/10"
-        >
-          Cancelar / Cerrar
-        </button>
-      </div>
+
+      <button
+        onClick={onCancel}
+        className="w-full max-w-[280px] py-4 text-white font-bold uppercase tracking-widest text-xs bg-white/10 hover:bg-white/20 rounded-2xl border border-white/10 transition-transform active:scale-95"
+      >
+        Cerrar Escáner
+      </button>
 
       <style>{`
-        @keyframes scan {
-          0%, 100% { top: 10%; opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          50% { top: 90%; }
+        @keyframes scan-line {
+          0% { top: 10%; opacity: 0; }
+          20% { opacity: 1; }
+          80% { opacity: 1; }
+          100% { top: 90%; opacity: 0; }
+        }
+        .animate-scan-line {
+          position: absolute;
+          animation: scan-line 3s linear infinite;
         }
       `}</style>
     </div>

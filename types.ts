@@ -1,4 +1,3 @@
-
 export enum UserRole {
   EMPLOYEE = 'EMPLOYEE',
   ADMIN = 'ADMIN'
@@ -14,15 +13,17 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  vacations?: { id: string; start: string; end: string }[]; // Array de objetos con fechas
+  weeklyHours?: number; // Número de horas semanales
 }
 
 export interface AttendanceRecord {
-  id: string;
+  id?: string;        // Opcional (?) porque Firebase lo genera después
   userId: string;
   userName: string;
   timestamp: string;
   type: RecordType;
-  locationCode: string;
+  location: string;   // Cambiado de locationCode a location para que coincida con tu dbService
 }
 
 export interface AuthState {
@@ -35,3 +36,4 @@ export interface AdminSettings {
   layoutDensity: 'compact' | 'spacious';
   showSummary: boolean;
 }
+
