@@ -35,10 +35,19 @@ const App: React.FC = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        // Obtenemos el token para verificar los Custom Claims (roles seguros)
+        const idTokenResult = await firebaseUser.getIdTokenResult();
+        const roleFromClaim = idTokenResult.claims.role as UserRole | undefined;
+
         const profile = await dbService.getUserProfile(firebaseUser.uid);
         if (profile) {
-          setUser(profile);
-          loadData(profile);
+          // Priorizamos el rol del Claim (autorización) sobre el de Firestore (display)
+          const updatedUser = {
+            ...profile,
+            role: roleFromClaim || profile.role
+          };
+          setUser(updatedUser);
+          loadData(updatedUser);
         }
       } else {
         setUser(null);
