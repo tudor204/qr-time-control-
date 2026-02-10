@@ -39,83 +39,104 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees }) =>
     const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
             {/* Filtros */}
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Filtros</h3>
+            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm shadow-slate-200/50">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xs">
+                        <i className="fas fa-filter"></i>
+                    </div>
+                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Panel de Filtros</h3>
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     {/* Selector de empleado */}
-                    <div>
-                        <label className="text-[9px] font-black text-gray-400 uppercase block mb-2">Empleado</label>
-                        <select
-                            value={selectedEmployeeId}
-                            onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                            className="w-full p-3 bg-gray-50 rounded-xl text-xs font-bold border-none"
-                        >
-                            <option value="all">Todos los empleados</option>
-                            {employees.map(emp => (
-                                <option key={emp.id} value={emp.id}>{emp.name}</option>
-                            ))}
-                        </select>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase block ml-2 tracking-wider">Empleado</label>
+                        <div className="relative group">
+                            <i className="fas fa-user text-[10px] absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"></i>
+                            <select
+                                value={selectedEmployeeId}
+                                onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                                className="w-full pl-10 p-3.5 bg-slate-50 border-2 border-transparent rounded-2xl text-xs font-bold text-slate-700 outline-none focus:bg-white focus:border-blue-600/20 transition-all appearance-none cursor-pointer"
+                            >
+                                <option value="all">Todos los empleados</option>
+                                {employees.map(emp => (
+                                    <option key={emp.id} value={emp.id}>{emp.name}</option>
+                                ))}
+                            </select>
+                            <i className="fas fa-chevron-down text-[10px] absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                        </div>
                     </div>
 
                     {/* Fecha inicio */}
-                    <div>
-                        <label className="text-[9px] font-black text-gray-400 uppercase block mb-2">Fecha Inicio</label>
-                        <input
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            className="w-full p-3 bg-gray-50 rounded-xl text-xs font-bold border-none"
-                        />
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase block ml-2 tracking-wider">Desde</label>
+                        <div className="relative group">
+                            <i className="fas fa-calendar-alt text-[10px] absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"></i>
+                            <input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="w-full pl-10 p-3.5 bg-slate-50 border-2 border-transparent rounded-2xl text-xs font-bold text-slate-700 outline-none focus:bg-white focus:border-blue-600/20 transition-all"
+                            />
+                        </div>
                     </div>
 
                     {/* Fecha fin */}
-                    <div>
-                        <label className="text-[9px] font-black text-gray-400 uppercase block mb-2">Fecha Fin</label>
-                        <input
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            className="w-full p-3 bg-gray-50 rounded-xl text-xs font-bold border-none"
-                        />
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase block ml-2 tracking-wider">Hasta</label>
+                        <div className="relative group">
+                            <i className="fas fa-calendar-check text-[10px] absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"></i>
+                            <input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="w-full pl-10 p-3.5 bg-slate-50 border-2 border-transparent rounded-2xl text-xs font-bold text-slate-700 outline-none focus:bg-white focus:border-blue-600/20 transition-all"
+                            />
+                        </div>
                     </div>
                 </div>
 
-                {/* Toggle de vista */}
-                <div className="flex gap-2">
+                {/* Toggle de vista - Segmented Control Style */}
+                <div className="bg-slate-50 p-1.5 rounded-[1.5rem] flex gap-1">
                     <button
                         onClick={() => setViewMode('detail')}
-                        className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${viewMode === 'detail' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-400'
+                        className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.15em] transition-all duration-300 ${viewMode === 'detail' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'
                             }`}
                     >
+                        <i className={`fas fa-list-ul ${viewMode === 'detail' ? 'text-blue-500' : 'text-slate-300'}`}></i>
                         Vista Detallada
                     </button>
                     <button
                         onClick={() => setViewMode('monthly')}
                         disabled={selectedEmployeeId === 'all'}
-                        className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${viewMode === 'monthly' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-400'
-                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.15em] transition-all duration-300 ${viewMode === 'monthly' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'
+                            } disabled:opacity-40 disabled:cursor-not-allowed`}
                     >
+                        <i className={`fas fa-calendar-days ${viewMode === 'monthly' ? 'text-blue-500' : 'text-slate-300'}`}></i>
                         Resumen Mensual
                     </button>
                 </div>
 
                 {selectedEmployeeId === 'all' && viewMode === 'monthly' && (
-                    <p className="text-[9px] text-orange-500 font-bold mt-2 text-center">
-                        Selecciona un empleado específico para ver el resumen mensual
-                    </p>
+                    <div className="flex items-center justify-center gap-2 mt-4 text-orange-400">
+                        <i className="fas fa-circle-info text-[10px]"></i>
+                        <p className="text-[10px] font-bold uppercase tracking-wide">
+                            Selecciona un empleado específico para activar resúmenes
+                        </p>
+                    </div>
                 )}
             </div>
 
             {/* Vista Detallada */}
             {viewMode === 'detail' && (
-                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                            Registros ({dateFilteredRecords.length})
-                        </h3>
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm animate-in fade-in duration-500">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                        <div>
+                            <h3 className="text-xl font-black text-slate-800 tracking-tight">Listado de Registros</h3>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Total de {dateFilteredRecords.length} movimientos</p>
+                        </div>
                         {dateFilteredRecords.length > 0 && selectedEmployeeId !== 'all' && (
                             <button
                                 onClick={() => generateDetailedPDF(
@@ -124,32 +145,46 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees }) =>
                                     startDate || dateFilteredRecords[dateFilteredRecords.length - 1]?.timestamp.split('T')[0],
                                     endDate || dateFilteredRecords[0]?.timestamp.split('T')[0]
                                 )}
-                                className="bg-blue-600 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase shadow-md hover:bg-blue-700 transition-all"
+                                className="group relative overflow-hidden bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-95 transition-all"
                             >
-                                <i className="fas fa-file-pdf mr-2"></i>
-                                Exportar PDF
+                                <span className="relative z-10 flex items-center gap-2">
+                                    <i className="fas fa-file-pdf text-xs text-red-400"></i>
+                                    Descargar Reporte
+                                </span>
+                                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                             </button>
                         )}
                     </div>
 
-                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                    <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                         {dateFilteredRecords.length === 0 ? (
-                            <p className="text-center text-gray-400 text-xs font-bold py-8">
-                                No hay registros para los filtros seleccionados
-                            </p>
+                            <div className="flex flex-col items-center justify-center py-20 text-slate-300">
+                                <i className="fas fa-folder-open text-5xl mb-4 opacity-20"></i>
+                                <p className="text-xs font-black uppercase tracking-[0.2em]">Sin datos disponibles</p>
+                            </div>
                         ) : (
                             dateFilteredRecords.map((rec, i) => (
-                                <div key={i} className="bg-gray-50 p-4 rounded-2xl flex items-center justify-between">
-                                    <div>
-                                        <p className="font-bold text-sm text-gray-800">{rec.userName}</p>
-                                        <p className="text-[9px] text-gray-400 font-black uppercase">
-                                            {new Date(rec.timestamp).toLocaleString('es-ES')}
-                                        </p>
+                                <div key={i} className="group bg-slate-50/50 hover:bg-white p-5 rounded-3xl flex items-center justify-between border-2 border-transparent hover:border-blue-600/10 transition-all hover:shadow-xl hover:shadow-slate-200/40">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg ${rec.type === 'IN' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'}`}>
+                                            <i className={`fas ${rec.type === 'IN' ? 'fa-sign-in-alt' : 'fa-sign-out-alt'}`}></i>
+                                        </div>
+                                        <div>
+                                            <p className="font-black text-slate-800 text-sm leading-tight mb-1">{rec.userName}</p>
+                                            <div className="flex items-center gap-2">
+                                                <i className="far fa-clock text-[10px] text-slate-300"></i>
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+                                                    {new Date(rec.timestamp).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase ${rec.type === 'IN' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-                                        }`}>
-                                        {rec.type}
-                                    </span>
+                                    <div className="flex flex-col items-end">
+                                        <span className={`text-[10px] font-black px-4 py-1.5 rounded-full tracking-widest ${rec.type === 'IN' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'
+                                            }`}>
+                                            {rec.type === 'IN' ? 'ENTRADA' : 'SALIDA'}
+                                        </span>
+                                    </div>
                                 </div>
                             ))
                         )}
@@ -159,44 +194,51 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees }) =>
 
             {/* Vista Mensual */}
             {viewMode === 'monthly' && selectedEmployeeId !== 'all' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in zoom-in-95 duration-500">
                     {monthlyStats.length === 0 ? (
-                        <div className="col-span-full">
-                            <p className="text-center text-gray-400 text-xs font-bold py-8">
-                                No hay datos para mostrar
-                            </p>
+                        <div className="col-span-full py-20 bg-white rounded-[3rem] border border-dashed border-slate-200 flex flex-col items-center text-slate-300">
+                            <i className="fas fa-calendar-xmark text-5xl mb-4 opacity-20"></i>
+                            <p className="text-xs font-black uppercase tracking-[0.2em]">No hay historial para este empleado</p>
                         </div>
                     ) : (
                         monthlyStats.map((month, i) => (
-                            <div key={i} className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm">
-                                <div className="flex justify-between items-start mb-4">
+                            <div key={i} className="group bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-blue-600/10 transition-all duration-500 hover:-translate-y-2 relative overflow-hidden">
+                                {/* Badge de Fondo Decorativo */}
+                                <div className="absolute top-0 right-0 p-8 text-blue-600/5 group-hover:scale-150 group-hover:text-blue-600/10 transition-all duration-700">
+                                    <i className="fas fa-chart-pie text-7xl"></i>
+                                </div>
+
+                                <div className="flex justify-between items-start mb-8 relative z-10">
                                     <div>
-                                        <h4 className="text-lg font-black text-gray-800 capitalize">{month.monthName}</h4>
-                                        <p className="text-[9px] text-gray-400 font-black uppercase">{month.year}</p>
+                                        <h4 className="text-2xl font-black text-slate-800 capitalize tracking-tighter">{month.monthName}</h4>
+                                        <p className="text-[11px] text-blue-600 font-black uppercase tracking-[0.2em]">{month.year}</p>
                                     </div>
                                     <button
                                         onClick={() => generateMonthlyPDF(month, selectedEmployee?.name || 'Empleado')}
-                                        className="bg-blue-100 text-blue-600 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all"
-                                        title="Exportar PDF"
+                                        className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center hover:bg-blue-600 shadow-lg shadow-slate-900/10 hover:shadow-blue-600/20 transition-all duration-300"
+                                        title="Exportar PDF Mensual"
                                     >
-                                        <i className="fas fa-file-pdf text-xs"></i>
+                                        <i className="fas fa-file-export text-sm"></i>
                                     </button>
                                 </div>
 
-                                <div className="space-y-3">
-                                    <div className="bg-gray-50 p-3 rounded-xl">
-                                        <p className="text-[8px] text-gray-400 font-black uppercase">Total Horas</p>
-                                        <p className="text-2xl font-black text-gray-800">{month.totalHours}h</p>
+                                <div className="space-y-4 relative z-10">
+                                    <div className="bg-slate-50 p-5 rounded-3xl group-hover:bg-blue-50/50 transition-colors">
+                                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1 group-hover:text-blue-400">Tiempo Total</p>
+                                        <div className="flex items-baseline gap-2">
+                                            <p className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-blue-700 transition-colors">{month.totalHours}</p>
+                                            <p className="text-xs font-bold text-slate-400">horas</p>
+                                        </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="bg-gray-50 p-3 rounded-xl">
-                                            <p className="text-[8px] text-gray-400 font-black uppercase">Días</p>
-                                            <p className="text-lg font-black text-gray-800">{month.daysWorked}</p>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-slate-50 p-4 rounded-3xl border border-transparent group-hover:border-blue-100 transition-all">
+                                            <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Días</p>
+                                            <p className="text-xl font-black text-slate-800">{month.daysWorked}</p>
                                         </div>
-                                        <div className="bg-gray-50 p-3 rounded-xl">
-                                            <p className="text-[8px] text-gray-400 font-black uppercase">Promedio</p>
-                                            <p className="text-lg font-black text-gray-800">{month.avgHoursPerDay}h</p>
+                                        <div className="bg-slate-50 p-4 rounded-3xl border border-transparent group-hover:border-blue-100 transition-all">
+                                            <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Media</p>
+                                            <p className="text-xl font-black text-slate-800">{month.avgHoursPerDay}h</p>
                                         </div>
                                     </div>
                                 </div>
