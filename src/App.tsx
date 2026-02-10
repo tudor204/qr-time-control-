@@ -336,6 +336,40 @@ const App: React.FC = () => {
             <div className="p-8 overflow-y-auto bg-gray-50 space-y-6">
               <ProductivityWidget employee={selectedEmployee} title="Productividad" records={records} />
 
+              {/* Editor de Horas Semanales */}
+              <div className="bg-white p-6 rounded-3xl border border-gray-100">
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">
+                  Horas Semanales
+                </h4>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="number"
+                    min="1"
+                    max="168"
+                    value={selectedEmployee.weeklyHours || 40}
+                    onChange={async (e) => {
+                      const newHours = parseInt(e.target.value) || 40;
+                      const updatedUser = { ...selectedEmployee, weeklyHours: newHours };
+                      try {
+                        await dbService.saveUserProfile(updatedUser);
+                        setEmployees(employees.map(emp => emp.id === updatedUser.id ? updatedUser : emp));
+                        setSelectedEmployee(updatedUser);
+                        setFeedback({ type: 'success', msg: `Horas semanales actualizadas a ${newHours}h` });
+                        setTimeout(() => setFeedback(null), 2000);
+                      } catch (e) {
+                        setFeedback({ type: 'error', msg: 'Error al actualizar horas' });
+                        setTimeout(() => setFeedback(null), 2000);
+                      }
+                    }}
+                    className="w-24 p-3 bg-gray-50 rounded-xl text-center text-lg font-black border-none"
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-gray-800">Horas por semana</p>
+                    <p className="text-[9px] text-gray-400 font-bold">Ajusta las horas de trabajo semanales</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-white p-6 rounded-3xl border border-gray-100">
                 <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">
                   {editingVacationId ? 'Editar Vacaciones' : 'Planificar Vacaciones'}
