@@ -11,6 +11,11 @@ import {
 import Scanner from './components/Scanner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { LoginForm } from './components/Auth/LoginForm';
+import { ProductivityWidget } from './components/Dashboard/ProductivityWidget';
+import { ReportsTab } from './components/Admin/ReportsTab';
+import { calculateDurationHours, formatDuration, getGroupedRecords, getWeeklyStats } from './utils/timeCalculations';
+import { isCurrentlyOnVacation, getEmployeeStatus } from './utils/employeeStatus';
 
 declare const QRCode: any;
 
@@ -24,7 +29,7 @@ const App: React.FC = () => {
   const [employees, setEmployees] = useState<User[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'history' | 'employees' | 'settings'>('history');
+  const [activeTab, setActiveTab] = useState<'history' | 'employees' | 'settings' | 'reports'>('history');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
   const [vacationDate, setVacationDate] = useState({ start: '', end: '' });
   const [editingVacationId, setEditingVacationId] = useState<string | null>(null);
@@ -82,77 +87,9 @@ const App: React.FC = () => {
     } catch (e) { console.error(e); }
   };
 
-  const calculateDurationHours = (inTime?: string, outTime?: string): number => {
-    if (!inTime || !outTime) return 0;
-    return (new Date(outTime).getTime() - new Date(inTime).getTime()) / 3600000;
-  };
 
-  const formatDuration = (hoursFloat: number) => {
-    const h = Math.floor(hoursFloat);
-    const m = Math.floor((hoursFloat - h) * 60);
-    return h > 0 || m > 0 ? `${h}h ${m}m` : 'En curso...';
-  };
 
-  const isCurrentlyOnVacation = (emp: User) => {
-    if (!emp.vacations) return false;
-    const today = new Date().toISOString().split('T')[0];
-    return emp.vacations.some(v => today >= v.start && today <= v.end);
-  };
 
-  const getEmployeeStatus = (emp: User) => {
-    if (isCurrentlyOnVacation(emp)) return { label: 'De Vacaciones', color: 'text-orange-500', bg: 'bg-orange-50', border: 'border-orange-200', icon: '🏝️' };
-
-    // Check if active
-    const userRecs = records.filter(r => r.userId === emp.id);
-    const lastRec = userRecs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-    const isActive = lastRec && lastRec.type === RecordType.IN;
-
-    if (isActive) return { label: 'Trabajando', color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', icon: '🟢' };
-    return { label: 'Inactivo', color: 'text-gray-400', bg: 'bg-white', border: 'border-gray-100', icon: '🔴' };
-  };
-
-  const getGroupedRecords = (userId: string) => {
-    const userRecs = records.filter(r => r.userId === userId);
-    const groups: { [key: string]: any } = {};
-    userRecs.forEach(rec => {
-      const dateKey = rec.timestamp.split('T')[0];
-      if (!groups[dateKey]) groups[dateKey] = { date: dateKey, in: null, out: null };
-      if (rec.type === RecordType.IN) groups[dateKey].in = rec.timestamp;
-      if (rec.type === RecordType.OUT) groups[dateKey].out = rec.timestamp;
-    });
-    return Object.values(groups).sort((a: any, b: any) => b.date.localeCompare(a.date));
-  };
-
-  const getWeeklyStats = (emp: User) => {
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    const groups = getGroupedRecords(emp.id);
-    const totalHours = groups
-      .filter((g: any) => new Date(g.date) >= oneWeekAgo)
-      .reduce((acc, curr: any) => acc + calculateDurationHours(curr.in, curr.out), 0);
-    const onVacation = isCurrentlyOnVacation(emp);
-    const target = onVacation ? 0 : (emp.weeklyHours || 40);
-    return { total: totalHours.toFixed(1), target, percent: target === 0 ? 100 : Math.min((totalHours / target) * 100, 100), onVacation };
-  };
-
-  const ProductivityWidget = ({ employee, title }: { employee: User, title: string }) => {
-    const stats = getWeeklyStats(employee);
-    return (
-      <div className={`p-6 rounded-[2.5rem] shadow-sm border mb-6 relative overflow-hidden transition-all ${stats.onVacation ? 'bg-orange-50 border-orange-200' : 'bg-white border-gray-100'}`}>
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{title}</h3>
-          {stats.onVacation && <span className="bg-orange-500 text-white px-3 py-1 rounded-full text-[9px] font-black">VACACIONES 🏖️</span>}
-        </div>
-        <div className="flex items-end gap-2 mb-3">
-          <span className={`text-4xl font-black ${stats.onVacation ? 'text-orange-600' : 'text-gray-800'}`}>{stats.total}</span>
-          <span className="text-gray-400 font-bold text-xs mb-1.5 uppercase">Horas / {stats.target}h</span>
-        </div>
-        <div className="w-full bg-gray-200/50 h-2.5 rounded-full overflow-hidden">
-          <div className={`${stats.onVacation ? 'bg-orange-500' : 'bg-blue-600'} h-full transition-all duration-1000`} style={{ width: `${stats.percent}%` }}></div>
-        </div>
-      </div>
-    );
-  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true);
@@ -251,7 +188,7 @@ const App: React.FC = () => {
         {user.role === UserRole.ADMIN ? (
           <div className="space-y-6">
             <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-gray-100">
-              {(['history', 'employees', 'settings'] as const).map(tab => (
+              {(['history', 'employees', 'reports', 'settings'] as const).map(tab => (
                 <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400'}`}>{tab}</button>
               ))}
             </div>
@@ -270,7 +207,7 @@ const App: React.FC = () => {
             {activeTab === 'employees' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {employees.map(emp => {
-                  const status = getEmployeeStatus(emp);
+                  const status = getEmployeeStatus(emp, records);
                   return (
                     <div key={emp.id} onClick={() => setSelectedEmployee(emp)} className={`p-6 rounded-[2.5rem] border cursor-pointer relative transition-all hover:border-blue-300 ${status.bg} ${status.border} shadow-sm`}>
                       <div className="flex justify-between items-start mb-2">
@@ -288,6 +225,10 @@ const App: React.FC = () => {
               </div>
             )}
 
+            {activeTab === 'reports' && (
+              <ReportsTab records={records} employees={employees} />
+            )}
+
             {activeTab === 'settings' && (
               <div className="bg-white p-10 rounded-[3rem] text-center border border-gray-100 max-w-md mx-auto shadow-sm">
                 <h3 className="font-black text-gray-800 mb-6 uppercase tracking-widest text-xs">Punto de Acceso Oficial</h3>
@@ -298,7 +239,7 @@ const App: React.FC = () => {
           </div>
         ) : (
           <div className="max-w-md mx-auto space-y-8">
-            <ProductivityWidget employee={user} title="Mi Actividad" />
+            <ProductivityWidget employee={user} title="Mi Actividad" records={records} />
 
             <div>
               <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-3">Vacaciones Programadas</h3>
@@ -316,7 +257,7 @@ const App: React.FC = () => {
             <div>
               <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-3">Historial Personal</h3>
               <div className="space-y-3">
-                {getGroupedRecords(user.id).map((day: any, i) => (
+                {getGroupedRecords(user.id, records).map((day: any, i) => (
                   <div key={i} className="bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm">
                     <div className="flex justify-between items-center mb-4">
                       <span className="text-xs font-black text-gray-800 uppercase">{new Date(day.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric' })}</span>
@@ -367,9 +308,9 @@ const App: React.FC = () => {
                   doc.text(`Fecha Reporte: ${new Date().toLocaleDateString()}`, 14, 50);
 
                   // Stats
-                  const stats = getWeeklyStats(selectedEmployee);
+                  const stats = getWeeklyStats(selectedEmployee, records, isCurrentlyOnVacation(selectedEmployee));
                   doc.text(`Horas esta semana: ${stats.total}`, 14, 60);
-                  doc.text(`Estado actual: ${getEmployeeStatus(selectedEmployee).label}`, 14, 66);
+                  doc.text(`Estado actual: ${getEmployeeStatus(selectedEmployee, records).label}`, 14, 66);
 
                   // Table
                   const empRecords = records.filter(r => r.userId === selectedEmployee.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -393,7 +334,7 @@ const App: React.FC = () => {
               </div>
             </div>
             <div className="p-8 overflow-y-auto bg-gray-50 space-y-6">
-              <ProductivityWidget employee={selectedEmployee} title="Productividad" />
+              <ProductivityWidget employee={selectedEmployee} title="Productividad" records={records} />
 
               <div className="bg-white p-6 rounded-3xl border border-gray-100">
                 <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">

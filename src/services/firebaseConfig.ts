@@ -23,7 +23,7 @@ if (typeof window !== 'undefined') {
   }
 
   initializeAppCheck(app, {
-    provider: new ReCaptchaEnterpriseProvider(import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LdW9M4qAAAAAPuU5Y2vX84V_9S3_G9Z9G9Z9G9Z'),
+    provider: new ReCaptchaEnterpriseProvider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
     isTokenAutoRefreshEnabled: true
   });
 }
