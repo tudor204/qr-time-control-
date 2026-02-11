@@ -1,4 +1,4 @@
-import { User, AttendanceRecord, RecordType } from '../types';
+import { User, AttendanceRecord, RecordType, Absence } from '../types';
 
 /**
  * Calcula la duración en horas entre dos timestamps
@@ -33,16 +33,54 @@ export const getGroupedRecords = (userId: string, records: AttendanceRecord[]) =
 };
 
 /**
- * Calcula las estadísticas semanales de un empleado
+ * Calcula las estadísticas semanales de un empleado considerando ausencias
  */
-export const getWeeklyStats = (emp: User, records: AttendanceRecord[], isOnVacation: boolean) => {
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+export const getWeeklyStats = (emp: User, records: AttendanceRecord[], isOnVacation: boolean, absences: Absence[] = []) => {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 (Dom) a 6 (Sab)
+    // Ajustamos para que la semana empiece el Lunes (0)
+    const diffToMonday = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+
     const groups = getGroupedRecords(emp.id, records);
+
+    // Filtrar registros de la semana actual (Lunes a Domingo)
     const totalHours = groups
-        .filter((g: any) => new Date(g.date) >= oneWeekAgo)
+        .filter((g: any) => {
+            const d = new Date(g.date);
+            return d >= monday && d <= sunday;
+        })
         .reduce((acc, curr: any) => acc + calculateDurationHours(curr.in, curr.out), 0);
-    const onVacation = isOnVacation;
-    const target = onVacation ? 0 : (emp.weeklyHours || 40);
-    return { total: totalHours.toFixed(1), target, percent: target === 0 ? 100 : Math.min((totalHours / target) * 100, 100), onVacation };
+
+    // Contar ausencias de la semana actual
+    const weeklyAbsences = absences.filter(a => {
+        const d = new Date(a.date);
+        return d >= monday && d <= sunday;
+    }).length;
+
+    const workingDaysPerWeek = emp.workingDaysPerWeek || 5;
+    const baseWeeklyHours = emp.weeklyHours || 40;
+
+    // Cálculo proporcional: (Horas / Días) * (Días - Ausencias)
+    let target = isOnVacation ? 0 : baseWeeklyHours;
+    if (!isOnVacation && weeklyAbsences > 0) {
+        const hoursPerDay = baseWeeklyHours / workingDaysPerWeek;
+        const remainingWorkingDays = Math.max(0, workingDaysPerWeek - weeklyAbsences);
+        target = hoursPerDay * remainingWorkingDays;
+    }
+
+    return {
+        total: totalHours.toFixed(1),
+        target: target.toFixed(1),
+        percent: target === 0 ? 100 : Math.min((totalHours / target) * 100, 100),
+        onVacation: isOnVacation,
+        absentDays: weeklyAbsences
+    };
 };

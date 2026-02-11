@@ -15,6 +15,16 @@ export interface User {
   role: UserRole;
   vacations?: { id: string; start: string; end: string }[]; // Array de objetos con fechas
   weeklyHours?: number; // Número de horas semanales
+  workingDaysPerWeek?: number; // Días laborales por semana (por defecto 5)
+}
+
+export interface Absence {
+  id?: string;
+  userId: string;
+  date: string; // formato YYYY-MM-DD
+  predefinedReason: string;
+  customReason?: string;
+  createdAt: string;
 }
 
 export interface AttendanceRecord {

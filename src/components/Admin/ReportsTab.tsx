@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { AttendanceRecord, User } from '../../types';
+import { AttendanceRecord, User, Absence } from '../../types';
 import { filterRecordsByDateRange, calculateMonthlyStats, generateDetailedPDF, generateMonthlyPDF } from '../../utils/reportUtils';
 import { calculateDurationHours } from '../../utils/timeCalculations';
 
 interface ReportsTabProps {
     records: AttendanceRecord[];
     employees: User[];
+    absences: Absence[];
 }
 
-export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees }) => {
+export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees, absences }) => {
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('all');
     const [startDate, setStartDate] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
@@ -20,16 +21,35 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees }) =>
         return true;
     });
 
+    const filteredAbsences = absences.filter(abs => {
+        if (selectedEmployeeId !== 'all' && abs.userId !== selectedEmployeeId) return false;
+        return true;
+    });
+
     const dateFilteredRecords = filterRecordsByDateRange(filteredRecords, startDate, endDate);
 
-    // Agrupar por empleado para vista detallada
-    const recordsByEmployee: { [key: string]: AttendanceRecord[] } = {};
-    dateFilteredRecords.forEach(rec => {
-        if (!recordsByEmployee[rec.userId]) {
-            recordsByEmployee[rec.userId] = [];
-        }
-        recordsByEmployee[rec.userId].push(rec);
+    // Filtrar ausencias por fecha manualmente o actualizar reportUtils
+    const start = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : null;
+    const end = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : null;
+
+    const dateFilteredAbsences = filteredAbsences.filter(abs => {
+        if (!start || !end) return true;
+        const d = new Date(abs.date).getTime();
+        return d >= start && d <= end;
     });
+
+    // Fusionar para vista detallada
+    const combinedData = [
+        ...dateFilteredRecords.map(r => ({ ...r, isAbsence: false })),
+        ...dateFilteredAbsences.map(a => ({
+            userId: a.userId,
+            userName: employees.find(e => e.id === a.userId)?.name || 'Desconocido',
+            timestamp: a.date + 'T00:00:00Z',
+            type: 'AUSENCIA',
+            isAbsence: true,
+            reason: a.predefinedReason === 'Otro' ? a.customReason : a.predefinedReason
+        }))
+    ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     // Calcular estadísticas mensuales
     const monthlyStats = selectedEmployeeId !== 'all'
@@ -41,6 +61,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees }) =>
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
             {/* Filtros */}
+            {/* ... (sin cambios) */}
             <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm shadow-slate-200/50">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xs">
@@ -118,15 +139,6 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees }) =>
                         Resumen Mensual
                     </button>
                 </div>
-
-                {selectedEmployeeId === 'all' && viewMode === 'monthly' && (
-                    <div className="flex items-center justify-center gap-2 mt-4 text-orange-400">
-                        <i className="fas fa-circle-info text-[10px]"></i>
-                        <p className="text-[10px] font-bold uppercase tracking-wide">
-                            Selecciona un empleado específico para activar resúmenes
-                        </p>
-                    </div>
-                )}
             </div>
 
             {/* Vista Detallada */}
@@ -135,15 +147,16 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees }) =>
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                         <div>
                             <h3 className="text-xl font-black text-slate-800 tracking-tight">Listado de Registros</h3>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Total de {dateFilteredRecords.length} movimientos</p>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Total de {combinedData.length} movimientos</p>
                         </div>
-                        {dateFilteredRecords.length > 0 && selectedEmployeeId !== 'all' && (
+                        {combinedData.length > 0 && selectedEmployeeId !== 'all' && (
                             <button
                                 onClick={() => generateDetailedPDF(
                                     dateFilteredRecords,
                                     selectedEmployee?.name || 'Empleado',
                                     startDate || dateFilteredRecords[dateFilteredRecords.length - 1]?.timestamp.split('T')[0],
-                                    endDate || dateFilteredRecords[0]?.timestamp.split('T')[0]
+                                    endDate || dateFilteredRecords[0]?.timestamp.split('T')[0],
+                                    dateFilteredAbsences
                                 )}
                                 className="group relative overflow-hidden bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-95 transition-all"
                             >
@@ -157,32 +170,36 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees }) =>
                     </div>
 
                     <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                        {dateFilteredRecords.length === 0 ? (
+                        {combinedData.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-slate-300">
                                 <i className="fas fa-folder-open text-5xl mb-4 opacity-20"></i>
                                 <p className="text-xs font-black uppercase tracking-[0.2em]">Sin datos disponibles</p>
                             </div>
                         ) : (
-                            dateFilteredRecords.map((rec, i) => (
-                                <div key={i} className="group bg-slate-50/50 hover:bg-white p-5 rounded-3xl flex items-center justify-between border-2 border-transparent hover:border-blue-600/10 transition-all hover:shadow-xl hover:shadow-slate-200/40">
+                            combinedData.map((item: any, i) => (
+                                <div key={i} className={`group p-5 rounded-3xl flex items-center justify-between border-2 transition-all hover:shadow-xl hover:shadow-slate-200/40 ${item.isAbsence ? 'bg-red-50/50 border-red-100 hover:bg-white' : 'bg-slate-50/50 hover:bg-white border-transparent hover:border-blue-600/10'}`}>
                                     <div className="flex items-center gap-4">
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg ${rec.type === 'IN' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'}`}>
-                                            <i className={`fas ${rec.type === 'IN' ? 'fa-sign-in-alt' : 'fa-sign-out-alt'}`}></i>
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg ${item.isAbsence ? 'bg-red-100 text-red-500' : item.type === 'IN' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'}`}>
+                                            <i className={`fas ${item.isAbsence ? 'fa-calendar-times' : item.type === 'IN' ? 'fa-sign-in-alt' : 'fa-sign-out-alt'}`}></i>
                                         </div>
                                         <div>
-                                            <p className="font-black text-slate-800 text-sm leading-tight mb-1">{rec.userName}</p>
+                                            <p className="font-black text-slate-800 text-sm leading-tight mb-1">{item.userName}</p>
                                             <div className="flex items-center gap-2">
-                                                <i className="far fa-clock text-[10px] text-slate-300"></i>
+                                                <i className={`far ${item.isAbsence ? 'fa-calendar' : 'fa-clock'} text-[10px] text-slate-300`}></i>
                                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
-                                                    {new Date(rec.timestamp).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                    {item.isAbsence
+                                                        ? new Date(item.timestamp).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
+                                                        : new Date(item.timestamp).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                                                    }
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-end">
-                                        <span className={`text-[10px] font-black px-4 py-1.5 rounded-full tracking-widest ${rec.type === 'IN' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'
+                                        <span className={`text-[10px] font-black px-4 py-1.5 rounded-full tracking-widest ${item.isAbsence ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' :
+                                            item.type === 'IN' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'
                                             }`}>
-                                            {rec.type === 'IN' ? 'ENTRADA' : 'SALIDA'}
+                                            {item.isAbsence ? `AUSENCIA: ${item.reason}` : item.type === 'IN' ? 'ENTRADA' : 'SALIDA'}
                                         </span>
                                     </div>
                                 </div>

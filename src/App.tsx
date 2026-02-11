@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, UserRole, AttendanceRecord, RecordType } from './types';
+import { User, UserRole, AttendanceRecord, RecordType, Absence } from './types';
 import { auth } from './services/firebaseConfig';
 import { dbService } from './services/dbService';
 import {
@@ -27,12 +27,21 @@ const App: React.FC = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [employees, setEmployees] = useState<User[]>([]);
+  const [absences, setAbsences] = useState<Absence[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'history' | 'employees' | 'settings' | 'reports'>('history');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
   const [vacationDate, setVacationDate] = useState({ start: '', end: '' });
   const [editingVacationId, setEditingVacationId] = useState<string | null>(null);
+
+  // Estados para el Modal de Ausencia
+  const [showAbsenceModal, setShowAbsenceModal] = useState(false);
+  const [absenceFormData, setAbsenceFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    predefinedReason: 'Baja médica',
+    customReason: ''
+  });
 
   const qrContainerRef = useRef<HTMLDivElement>(null);
   const [qrText] = useState('ACCES_POINT_001');
@@ -78,18 +87,17 @@ const App: React.FC = () => {
 
   const loadData = async (currentUser: User) => {
     try {
-      const [recs, emps] = await Promise.all([
-        dbService.getRecords(currentUser.role === UserRole.ADMIN ? undefined : currentUser.id),
-        currentUser.role === UserRole.ADMIN ? dbService.getEmployees() : Promise.resolve([])
+      const isAdmin = currentUser.role === UserRole.ADMIN;
+      const [recs, emps, abs] = await Promise.all([
+        dbService.getRecords(isAdmin ? undefined : currentUser.id),
+        isAdmin ? dbService.getEmployees() : Promise.resolve([]),
+        dbService.getAbsences(isAdmin ? undefined : currentUser.id)
       ]);
       setRecords(recs);
       setEmployees(emps);
+      setAbsences(abs);
     } catch (e) { console.error(e); }
   };
-
-
-
-
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true);
@@ -120,7 +128,16 @@ const App: React.FC = () => {
       setFeedback({ type: 'error', msg: 'QR no válido' });
       return;
     }
+
     const today = new Date().toISOString().split('T')[0];
+
+    // Validar Ausencia
+    const absence = absences.find(a => a.userId === user.id && a.date === today);
+    if (absence) {
+      setFeedback({ type: 'error', msg: 'Día marcado como AUSENTE. No puedes fichar hoy.' });
+      return;
+    }
+
     const userToday = records.filter(r => r.userId === user.id && r.timestamp.startsWith(today));
 
     // logic: max 2 records per day (one IN, one OUT)
@@ -145,9 +162,39 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSaveAbsence = async () => {
+    if (!user) return;
+    const today = new Date().toISOString().split('T')[0];
+
+    // Validar si ya hay registros hoy
+    const userToday = records.filter(r => r.userId === user.id && r.timestamp.startsWith(today));
+    if (userToday.length > 0) {
+      setFeedback({ type: 'error', msg: 'No puedes marcar ausencia si ya has fichado hoy' });
+      return;
+    }
+
+    try {
+      await dbService.addAbsence({
+        userId: user.id,
+        date: absenceFormData.date,
+        predefinedReason: absenceFormData.predefinedReason,
+        customReason: absenceFormData.predefinedReason === 'Otro' ? absenceFormData.customReason : undefined
+      });
+      setFeedback({ type: 'success', msg: 'Ausencia registrada correctamente' });
+      setShowAbsenceModal(false);
+      loadData(user);
+    } catch (e) {
+      setFeedback({ type: 'error', msg: 'Error al registrar ausencia' });
+    }
+    setTimeout(() => setFeedback(null), 3000);
+  };
+
   const getDayStatusText = () => {
     if (!user) return '';
     const today = new Date().toISOString().split('T')[0];
+    const absence = absences.find(a => a.userId === user.id && a.date === today);
+    if (absence) return 'Día de Ausencia';
+
     const userToday = records.filter(r => r.userId === user.id && r.timestamp.startsWith(today));
     if (userToday.length === 0) return 'Fichar Entrada';
     if (userToday.length === 1) return 'Fichar Salida';
@@ -205,14 +252,14 @@ const App: React.FC = () => {
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`flex-1 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300 ${activeTab === tab
-                      ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/10'
-                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                    ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/10'
+                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
                     }`}
                 >
                   <span className="flex items-center justify-center gap-2">
                     <i className={`fas ${tab === 'history' ? 'fa-list' :
-                        tab === 'employees' ? 'fa-users' :
-                          tab === 'reports' ? 'fa-chart-bar' : 'fa-cog'
+                      tab === 'employees' ? 'fa-users' :
+                        tab === 'reports' ? 'fa-chart-bar' : 'fa-cog'
                       } text-[10px] ${activeTab === tab ? 'text-blue-400' : 'text-slate-300'}`}></i>
                     {tab}
                   </span>
@@ -247,13 +294,13 @@ const App: React.FC = () => {
             {activeTab === 'employees' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in zoom-in-95 duration-500">
                 {employees.map(emp => {
-                  const status = getEmployeeStatus(emp, records);
+                  const status = getEmployeeStatus(emp, records, absences);
                   return (
                     <div
                       key={emp.id}
                       onClick={() => setSelectedEmployee(emp)}
                       className={`group p-6 rounded-[2.5rem] border-2 cursor-pointer relative transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 hover:border-blue-500/10 ${status.label === 'Trabajando' ? 'bg-white border-green-500/10 hover:shadow-green-500/5' :
-                          status.label === 'Inactivo' ? 'bg-white border-slate-100' : 'bg-white border-orange-500/10 hover:shadow-orange-500/5'
+                        status.label === 'Inactivo' ? 'bg-white border-slate-100' : 'bg-white border-orange-500/10 hover:shadow-orange-500/5'
                         } shadow-sm`}
                     >
                       <div className="flex justify-between items-start mb-6">
@@ -268,7 +315,7 @@ const App: React.FC = () => {
 
                       <div className="flex items-center justify-between mt-auto">
                         <div className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl flex items-center gap-2 ${status.label === 'Trabajando' ? 'bg-green-500/10 text-green-600' :
-                            status.label === 'Inactivo' ? 'bg-slate-100 text-slate-400' : 'bg-orange-500/10 text-orange-600'
+                          status.label === 'Inactivo' ? 'bg-slate-100 text-slate-400' : 'bg-orange-500/10 text-orange-600'
                           }`}>
                           <div className={`w-1.5 h-1.5 rounded-full ${status.label === 'Trabajando' ? 'bg-green-500 animate-pulse' : status.label === 'Inactivo' ? 'bg-slate-300' : 'bg-orange-400'}`}></div>
                           {status.label}
@@ -285,7 +332,7 @@ const App: React.FC = () => {
             )}
 
             {activeTab === 'reports' && (
-              <ReportsTab records={records} employees={employees} />
+              <ReportsTab records={records} employees={employees} absences={absences} />
             )}
 
             {activeTab === 'settings' && (
@@ -312,7 +359,17 @@ const App: React.FC = () => {
           </div>
         ) : (
           <div className="max-w-md mx-auto space-y-8">
-            <ProductivityWidget employee={user} title="Mi Actividad" records={records} />
+            <ProductivityWidget employee={user} title="Mi Actividad" records={records} absences={absences} />
+
+            <div className="flex gap-4 no-print">
+              <button
+                onClick={() => setShowAbsenceModal(true)}
+                className="flex-1 bg-white hover:bg-red-50 text-red-500 py-5 rounded-[2.5rem] font-black border-2 border-red-100 shadow-sm transition-all uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 active:scale-95"
+              >
+                <i className="fas fa-calendar-times"></i>
+                Marcar Ausencia
+              </button>
+            </div>
 
             <div>
               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-6 mb-4">Vacaciones Programadas</h3>
@@ -338,33 +395,60 @@ const App: React.FC = () => {
             <div>
               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-6 mb-4">Historial Personal</h3>
               <div className="space-y-4">
-                {getGroupedRecords(user.id, records).map((day: any, i) => (
-                  <div key={i} className="group bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-blue-600/5 transition-all">
-                    <div className="flex justify-between items-center mb-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-[10px]"><i className="fas fa-calendar-day"></i></div>
-                        <span className="text-sm font-black text-slate-800 uppercase tracking-tight">{new Date(day.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}</span>
+                {/* Fusionar registros de asistencia y ausencias */}
+                {(() => {
+                  const grouped = getGroupedRecords(user.id, records);
+                  const userAbsences = absences.filter(a => a.userId === user.id);
+                  const allDays = [...grouped];
+
+                  userAbsences.forEach(abs => {
+                    if (!allDays.find((d: any) => d.date === abs.date)) {
+                      allDays.push({ date: abs.date, isAbsence: true, absence: abs });
+                    }
+                  });
+
+                  return allDays.sort((a: any, b: any) => b.date.localeCompare(a.date)).map((day: any, i) => (
+                    <div key={i} className={`group p-6 rounded-[2.5rem] border transition-all ${day.isAbsence ? 'bg-red-50/30 border-red-100' : 'bg-white border-slate-100 shadow-sm hover:shadow-xl hover:shadow-blue-600/5'}`}>
+                      <div className="flex justify-between items-center mb-6">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] ${day.isAbsence ? 'bg-red-100 text-red-500' : 'bg-blue-50 text-blue-600'}`}>
+                            <i className={`fas ${day.isAbsence ? 'fa-calendar-times' : 'fa-calendar-day'}`}></i>
+                          </div>
+                          <span className="text-sm font-black text-slate-800 uppercase tracking-tight">{new Date(day.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}</span>
+                        </div>
+                        {day.isAbsence ? (
+                          <span className="text-[9px] font-black bg-red-500 text-white px-4 py-1.5 rounded-full shadow-lg shadow-red-900/10 uppercase tracking-wider">AUSENTE</span>
+                        ) : (
+                          <span className="text-[10px] font-black bg-slate-900 text-white px-4 py-1.5 rounded-full shadow-lg shadow-slate-900/10 uppercase tracking-wider">{formatDuration(calculateDurationHours(day.in, day.out))}</span>
+                        )}
                       </div>
-                      <span className="text-[10px] font-black bg-slate-900 text-white px-4 py-1.5 rounded-full shadow-lg shadow-slate-900/10 uppercase tracking-wider">{formatDuration(calculateDurationHours(day.in, day.out))}</span>
+
+                      {day.isAbsence ? (
+                        <div className="bg-white/50 p-4 rounded-2xl border border-red-100">
+                          <p className="text-[9px] text-red-400 font-black uppercase tracking-widest mb-1 shadow-sm">Motivo:</p>
+                          <p className="font-bold text-slate-700 text-sm">{day.absence.predefinedReason === 'Otro' ? day.absence.customReason : day.absence.predefinedReason}</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-transparent transition-colors group-hover:bg-green-50/50 group-hover:border-green-100">
+                            <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                              <i className="fas fa-arrow-right-to-bracket text-green-500"></i>
+                              Entrada
+                            </p>
+                            <p className="font-black text-slate-700 text-lg tracking-tight">{day.in ? new Date(day.in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
+                          </div>
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-transparent transition-colors group-hover:bg-red-50/50 group-hover:border-red-100">
+                            <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                              <i className="fas fa-arrow-right-from-bracket text-red-500"></i>
+                              Salida
+                            </p>
+                            <p className="font-black text-slate-700 text-lg tracking-tight">{day.out ? new Date(day.out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-transparent transition-colors group-hover:bg-green-50/50 group-hover:border-green-100">
-                        <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                          <i className="fas fa-arrow-right-to-bracket text-green-500"></i>
-                          Entrada
-                        </p>
-                        <p className="font-black text-slate-700 text-lg tracking-tight">{day.in ? new Date(day.in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
-                      </div>
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-transparent transition-colors group-hover:bg-red-50/50 group-hover:border-red-100">
-                        <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                          <i className="fas fa-arrow-right-from-bracket text-red-500"></i>
-                          Salida
-                        </p>
-                        <p className="font-black text-slate-700 text-lg tracking-tight">{day.out ? new Date(day.out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
             </div>
           </div>
@@ -374,7 +458,10 @@ const App: React.FC = () => {
       {user.role === UserRole.EMPLOYEE && (
         <div className="fixed bottom-8 left-0 right-0 z-50 flex justify-center px-6 no-print">
           <button
-            disabled={records.filter(r => r.userId === user.id && r.timestamp.startsWith(new Date().toISOString().split('T')[0])).length >= 2}
+            disabled={
+              absences.some(a => a.userId === user.id && a.date === new Date().toISOString().split('T')[0]) ||
+              records.filter(r => r.userId === user.id && r.timestamp.startsWith(new Date().toISOString().split('T')[0])).length >= 2
+            }
             onClick={() => setShowScanner(true)}
             className="w-full max-w-sm bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-[2.5rem] font-black shadow-[0_20px_40px_rgba(37,99,235,0.3)] flex items-center justify-center gap-4 active:scale-95 transition-all uppercase tracking-[0.2em] text-sm disabled:bg-slate-300 disabled:opacity-50 disabled:scale-100 disabled:shadow-none"
           >
@@ -412,9 +499,9 @@ const App: React.FC = () => {
                     doc.text(`Email: ${selectedEmployee.email}`, 14, 38);
                     doc.text(`Horas Semanales: ${selectedEmployee.weeklyHours || 40}h`, 14, 44);
                     doc.text(`Fecha Reporte: ${new Date().toLocaleDateString()}`, 14, 50);
-                    const stats = getWeeklyStats(selectedEmployee, records, isCurrentlyOnVacation(selectedEmployee));
+                    const stats = getWeeklyStats(selectedEmployee, records, isCurrentlyOnVacation(selectedEmployee), absences);
                     doc.text(`Horas esta semana: ${stats.total}`, 14, 60);
-                    doc.text(`Estado actual: ${getEmployeeStatus(selectedEmployee, records).label}`, 14, 66);
+                    doc.text(`Estado actual: ${getEmployeeStatus(selectedEmployee, records, absences).label}`, 14, 66);
                     const empRecords = records.filter(r => r.userId === selectedEmployee.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
                     autoTable(doc, {
                       startY: 75,
@@ -442,7 +529,7 @@ const App: React.FC = () => {
               </div>
             </div>
             <div className="p-8 md:p-10 overflow-y-auto bg-slate-50 space-y-8 custom-scrollbar">
-              <ProductivityWidget employee={selectedEmployee} title="Productividad" records={records} />
+              <ProductivityWidget employee={selectedEmployee} title="Productividad" records={records} absences={absences} />
 
               {/* Editor de Horas Semanales */}
               <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
@@ -606,7 +693,7 @@ const App: React.FC = () => {
       )}
 
       {feedback && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] flex flex-col items-center pointer-events-none w-full max-w-xs px-6">
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[500] flex flex-col items-center pointer-events-none w-full max-w-xs px-6">
           <div className={`
             px-8 py-4 rounded-3xl font-black text-[11px] uppercase tracking-widest shadow-2xl animate-in fade-in zoom-in slide-in-from-top-4 duration-500 backdrop-blur-md border flex items-center gap-3
             ${feedback.type === 'success' ? 'bg-slate-900/90 text-white border-white/10' : 'bg-red-600/90 text-white border-white/10'}
@@ -619,6 +706,70 @@ const App: React.FC = () => {
         </div>
       )}
       {showScanner && <Scanner onScan={handleQrScan} onCancel={() => setShowScanner(false)} />}
+
+      {/* MODAL DE AUSENCIA */}
+      {showAbsenceModal && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 no-print">
+          <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-xl" onClick={() => setShowAbsenceModal(false)}></div>
+          <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-10 text-center">
+              <div className="w-20 h-20 bg-red-50 text-red-500 rounded-[2rem] flex items-center justify-center text-3xl mx-auto mb-8 shadow-inner">
+                <i className="fas fa-calendar-times"></i>
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">Marcar Ausencia</h3>
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-10">¿No puedes asistir hoy?</p>
+
+              <div className="space-y-6 text-left">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Motivo de la Ausencia</label>
+                  <select
+                    value={absenceFormData.predefinedReason}
+                    onChange={(e) => setAbsenceFormData({ ...absenceFormData, predefinedReason: e.target.value })}
+                    className="w-full p-5 bg-slate-50 border-2 border-transparent rounded-2xl text-xs font-bold text-slate-700 outline-none focus:bg-white focus:border-red-600/20 transition-all appearance-none cursor-pointer"
+                  >
+                    <option>Baja médica</option>
+                    <option>Vacaciones</option>
+                    <option>Asunto personal</option>
+                    <option>Formación</option>
+                    <option>Permiso retribuido</option>
+                    <option>Permiso no retribuido</option>
+                    <option>Otro</option>
+                  </select>
+                </div>
+
+                {absenceFormData.predefinedReason === 'Otro' && (
+                  <div className="space-y-2 animate-in slide-in-from-top-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Especifica el motivo</label>
+                    <input
+                      type="text"
+                      placeholder="Escribe aquí..."
+                      value={absenceFormData.customReason}
+                      onChange={(e) => setAbsenceFormData({ ...absenceFormData, customReason: e.target.value })}
+                      className="w-full p-5 bg-slate-50 border-2 border-transparent rounded-2xl text-xs font-bold text-slate-700 outline-none focus:bg-white focus:border-red-600/20 transition-all"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-4 mt-12">
+                <button
+                  onClick={() => setShowAbsenceModal(false)}
+                  className="flex-1 bg-slate-50 text-slate-400 py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  disabled={absenceFormData.predefinedReason === 'Otro' && !absenceFormData.customReason}
+                  onClick={handleSaveAbsence}
+                  className="flex-[2] bg-slate-900 text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  Confirmar Ausencia
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

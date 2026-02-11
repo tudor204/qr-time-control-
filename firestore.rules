@@ -33,5 +33,17 @@ service cloud.firestore {
       // IMPORTANTE: Los empleados NO pueden editar ni borrar registros una vez creados
       allow update, delete: if request.auth != null && isAdmin();
     }
+
+    // Reglas para la colección de ausencias
+    match /absences/{absenceId} {
+      // Los empleados solo leen sus propias ausencias. Admins leen todas.
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
+      
+      // Los empleados solo pueden CREAR ausencias para sí mismos
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      
+      // Solo los administradores pueden borrar ausencias (opcionalmente)
+      allow update, delete: if request.auth != null && isAdmin();
+    }
   }
 }

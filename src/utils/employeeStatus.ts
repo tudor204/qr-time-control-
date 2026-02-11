@@ -1,4 +1,4 @@
-import { User, AttendanceRecord, RecordType } from '../types';
+import { User, AttendanceRecord, RecordType, Absence } from '../types';
 
 /**
  * Verifica si un empleado está actualmente de vacaciones
@@ -10,9 +10,17 @@ export const isCurrentlyOnVacation = (emp: User): boolean => {
 };
 
 /**
- * Obtiene el estado actual de un empleado (Trabajando, Inactivo, De Vacaciones)
+ * Verifica si un empleado está ausente hoy
  */
-export const getEmployeeStatus = (emp: User, records: AttendanceRecord[]) => {
+export const isAbsentToday = (userId: string, absences: Absence[]): Absence | undefined => {
+    const today = new Date().toISOString().split('T')[0];
+    return absences.find(a => a.userId === userId && a.date === today);
+};
+
+/**
+ * Obtiene el estado actual de un empleado (Trabajando, Inactivo, De Vacaciones, Ausente)
+ */
+export const getEmployeeStatus = (emp: User, records: AttendanceRecord[], absences: Absence[] = []) => {
     if (isCurrentlyOnVacation(emp)) {
         return {
             label: 'De Vacaciones',
@@ -20,6 +28,17 @@ export const getEmployeeStatus = (emp: User, records: AttendanceRecord[]) => {
             bg: 'bg-orange-50',
             border: 'border-orange-200',
             icon: '🏝️'
+        };
+    }
+
+    const absence = isAbsentToday(emp.id, absences);
+    if (absence) {
+        return {
+            label: 'Ausente',
+            color: 'text-red-500',
+            bg: 'bg-red-50',
+            border: 'border-red-200',
+            icon: '🗓️'
         };
     }
 

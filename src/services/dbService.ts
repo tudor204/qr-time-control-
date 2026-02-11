@@ -11,7 +11,7 @@ import {
   orderBy,
   deleteDoc
 } from 'firebase/firestore';
-import { User, AttendanceRecord, RecordType } from '../types';
+import { User, AttendanceRecord, RecordType, Absence } from '../types';
 
 export const dbService = {
   // Guardar perfil de usuario
@@ -83,5 +83,54 @@ export const dbService = {
       throw error;
     }
   },
+
+  // GESTIONAR AUSENCIAS
+  async addAbsence(absence: Omit<Absence, 'id' | 'createdAt'>) {
+    try {
+      const data: any = {
+        ...absence,
+        createdAt: new Date().toISOString()
+      };
+
+      // Eliminar campos undefined para evitar errores de Firestore
+      Object.keys(data).forEach(key =>
+        data[key] === undefined && delete data[key]
+      );
+
+      return await addDoc(collection(db, 'absences'), data);
+    } catch (error) {
+      console.error("Error en addAbsence:", error);
+      throw error;
+    }
+  },
+
+  async getAbsences(userId?: string): Promise<Absence[]> {
+    try {
+      const absenceRef = collection(db, 'absences');
+      let q;
+      if (userId) {
+        q = query(absenceRef, where('userId', '==', userId), orderBy('date', 'desc'));
+      } else {
+        q = query(absenceRef, orderBy('date', 'desc'));
+      }
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({
+        ...(doc.data() as any),
+        id: doc.id
+      } as Absence));
+    } catch (error) {
+      console.error("Error obteniendo ausencias:", error);
+      return [];
+    }
+  },
+
+  async deleteAbsence(id: string) {
+    try {
+      await deleteDoc(doc(db, 'absences', id));
+    } catch (error) {
+      console.error("Error eliminando ausencia:", error);
+      throw error;
+    }
+  }
 
 };

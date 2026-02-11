@@ -1,4 +1,4 @@
-import { AttendanceRecord, User } from '../types';
+import { AttendanceRecord, User, Absence } from '../types';
 import { calculateDurationHours } from './timeCalculations';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -92,7 +92,8 @@ export const generateDetailedPDF = (
     records: AttendanceRecord[],
     employeeName: string,
     startDate: string,
-    endDate: string
+    endDate: string,
+    absences: Absence[] = []
 ) => {
     const doc = new jsPDF();
 
@@ -105,8 +106,9 @@ export const generateDetailedPDF = (
     doc.text(`Periodo: ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`, 14, 38);
     doc.text(`Fecha de generación: ${new Date().toLocaleDateString()}`, 14, 44);
 
-    // Agrupar por día
-    const dayGroups: { [key: string]: { in?: string; out?: string; hours: number } } = {};
+    // Agrupar registros por día
+    const dayGroups: { [key: string]: { in?: string; out?: string; hours: number; isAbsence?: boolean; reason?: string } } = {};
+
     records.forEach(rec => {
         const dateKey = rec.timestamp.split('T')[0];
         if (!dayGroups[dateKey]) dayGroups[dateKey] = { hours: 0 };
@@ -115,10 +117,21 @@ export const generateDetailedPDF = (
         if (rec.type === 'OUT') dayGroups[dateKey].out = rec.timestamp;
     });
 
-    // Calcular horas
+    // Calcular horas de trabajo
     Object.keys(dayGroups).forEach(dateKey => {
         const day = dayGroups[dateKey];
         day.hours = calculateDurationHours(day.in, day.out);
+    });
+
+    // Añadir ausencias a los grupos
+    absences.forEach(abs => {
+        if (!dayGroups[abs.date]) {
+            dayGroups[abs.date] = {
+                hours: 0,
+                isAbsence: true,
+                reason: abs.predefinedReason === 'Otro' ? abs.customReason : abs.predefinedReason
+            };
+        }
     });
 
     const totalHours = Object.values(dayGroups).reduce((acc, day) => acc + day.hours, 0);
@@ -126,6 +139,14 @@ export const generateDetailedPDF = (
     // Table
     const tableData = Object.keys(dayGroups).sort().map(dateKey => {
         const day = dayGroups[dateKey];
+        if (day.isAbsence) {
+            return [
+                new Date(dateKey).toLocaleDateString('es-ES'),
+                { content: `AUSENCIA: ${day.reason}`, colSpan: 2, styles: { halign: 'center', fontStyle: 'bold', textColor: [239, 68, 68] } },
+                '',
+                '0.00h'
+            ];
+        }
         return [
             new Date(dateKey).toLocaleDateString('es-ES'),
             day.in ? new Date(day.in).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '--:--',
@@ -137,7 +158,7 @@ export const generateDetailedPDF = (
     autoTable(doc, {
         startY: 55,
         head: [['Fecha', 'Entrada', 'Salida', 'Horas']],
-        body: tableData,
+        body: tableData as any,
         foot: [['', '', 'TOTAL:', `${totalHours.toFixed(2)}h`]],
         theme: 'striped'
     });
