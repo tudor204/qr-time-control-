@@ -9,8 +9,12 @@ import {
   query,
   where,
   orderBy,
-  deleteDoc
+  deleteDoc,
+  collectionGroup,
+  writeBatch
 } from 'firebase/firestore';
+import { auth } from './firebaseConfig';
+import { deleteUser } from 'firebase/auth';
 import { User, AttendanceRecord, RecordType, Absence } from '../types';
 
 export const dbService = {
@@ -25,48 +29,50 @@ export const dbService = {
     return docSnap.exists() ? (docSnap.data() as User) : null;
   },
 
-  // OBTENER TODOS LOS EMPLEADOS (Para el Admin)
+  // OBTENER TODOS LOS EMPLEADOS (Para el Admin) - Excluimos eliminados
+  // Nota: Filtramos en JS porque Firestore '!=' excluye documentos donde el campo no existe.
   async getEmployees(): Promise<User[]> {
     const querySnapshot = await getDocs(collection(db, 'users'));
-    return querySnapshot.docs.map(doc => doc.data() as User);
+    return querySnapshot.docs
+      .map(doc => doc.data() as User)
+      .filter(user => user.isDeleted !== true);
   },
 
-  // AGREGAR REGISTRO DE ASISTENCIA
-  // He añadido 'type' como parámetro para que la App decida qué guardar
+  // AGREGAR REGISTRO DE ASISTENCIA (Jerárquico)
   async addRecord(userId: string, userName: string, location: string, type: RecordType) {
     try {
       const newRecord = {
         userId,
         userName,
         location,
-        timestamp: new Date().toISOString(), // Mantenemos ISO para tu lógica de App y PDF
-        type // 'IN' o 'OUT'
+        timestamp: new Date().toISOString(),
+        type
       };
-      return await addDoc(collection(db, 'records'), newRecord);
+      // users/{userId}/attendance/{recordId}
+      return await addDoc(collection(db, 'users', userId, 'attendance'), newRecord);
     } catch (error) {
       console.error("Error en addRecord:", error);
       throw error;
     }
   },
 
-  // OBTENER REGISTROS (Filtrados por usuario si no es admin)
+  // OBTENER REGISTROS (Jerárquico)
   async getRecords(userId?: string): Promise<AttendanceRecord[]> {
     try {
-      const recordsRef = collection(db, 'records');
       let q;
-
       if (userId) {
-        // Consulta para empleado específico
-        q = query(recordsRef, where('userId', '==', userId), orderBy('timestamp', 'desc'));
-      } else {
-        // Consulta para admin (todos los registros)
+        // Consulta para empleado específico en su subcolección
+        const recordsRef = collection(db, 'users', userId, 'attendance');
         q = query(recordsRef, orderBy('timestamp', 'desc'));
+      } else {
+        // Consulta para admin (todos los registros usando collectionGroup)
+        q = query(collectionGroup(db, 'attendance'), orderBy('timestamp', 'desc'));
       }
 
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({
         ...(doc.data() as any),
-        id: doc.id // Incluimos el ID de Firebase por si lo necesitas
+        id: doc.id
       } as AttendanceRecord));
     } catch (error) {
       console.error("Error obteniendo registros:", error);
@@ -74,17 +80,57 @@ export const dbService = {
     }
   },
 
-  // ELIMINAR USUARIO
-  async deleteUser(uid: string) {
+  // ELIMINACIÓN FÍSICA (Hard Delete) - Solicidatado por el usuario
+  async deleteUserCompletely(userId: string) {
     try {
-      await deleteDoc(doc(db, 'users', uid));
+      const batch = writeBatch(db);
+
+      // 1. Obtener y eliminar registros de asistencia
+      const recordsSnapshot = await getDocs(collection(db, 'users', userId, 'attendance'));
+      recordsSnapshot.forEach((doc) => batch.delete(doc.ref));
+
+      // 2. Obtener y eliminar registros de ausencias
+      const absencesSnapshot = await getDocs(collection(db, 'users', userId, 'absences'));
+      absencesSnapshot.forEach((doc) => batch.delete(doc.ref));
+
+      // 3. Eliminar el documento del usuario
+      batch.delete(doc(db, 'users', userId));
+
+      // 4. Ejecutar el batch en Firestore
+      await batch.commit();
+
+      // 5. Eliminar de Firebase Authentication
+      // Nota: Esto requiere que el usuario esté autenticado recientemente.
+      // Si falla, el usuario de Firestore ya no existe, pero el de Auth sí.
+      // En un entorno de producción real, esto se haría mejor con Firebase Admin SDK en una Cloud Function.
+      const currentUser = auth.currentUser;
+      if (currentUser && currentUser.uid === userId) {
+        await deleteUser(currentUser);
+      } else {
+        console.warn("No se puede eliminar de Auth directamente: El usuario no es el actual o la sesión expiró.");
+        // Opcional: Podríamos lanzar un error indicando que se requiere re-autenticación
+      }
     } catch (error) {
-      console.error("Error eliminando usuario:", error);
+      console.error("Error en deleteUserCompletely:", error);
       throw error;
     }
   },
 
-  // GESTIONAR AUSENCIAS
+  // ELIMINACIÓN LÓGICA (Soft Delete) - Recomendado para cumplimiento legal
+  async softDeleteUser(userId: string) {
+    try {
+      const userRef = doc(db, 'users', userId);
+      await setDoc(userRef, {
+        isDeleted: true,
+        deletedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (error) {
+      console.error("Error en softDeleteUser:", error);
+      throw error;
+    }
+  },
+
+  // GESTIONAR AUSENCIAS (Jerárquico)
   async addAbsence(absence: Omit<Absence, 'id' | 'createdAt'>) {
     try {
       const data: any = {
@@ -92,12 +138,12 @@ export const dbService = {
         createdAt: new Date().toISOString()
       };
 
-      // Eliminar campos undefined para evitar errores de Firestore
       Object.keys(data).forEach(key =>
         data[key] === undefined && delete data[key]
       );
 
-      return await addDoc(collection(db, 'absences'), data);
+      // users/{userId}/absences/{absenceId}
+      return await addDoc(collection(db, 'users', absence.userId, 'absences'), data);
     } catch (error) {
       console.error("Error en addAbsence:", error);
       throw error;
@@ -106,12 +152,12 @@ export const dbService = {
 
   async getAbsences(userId?: string): Promise<Absence[]> {
     try {
-      const absenceRef = collection(db, 'absences');
       let q;
       if (userId) {
-        q = query(absenceRef, where('userId', '==', userId), orderBy('date', 'desc'));
-      } else {
+        const absenceRef = collection(db, 'users', userId, 'absences');
         q = query(absenceRef, orderBy('date', 'desc'));
+      } else {
+        q = query(collectionGroup(db, 'absences'), orderBy('date', 'desc'));
       }
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({
@@ -124,9 +170,9 @@ export const dbService = {
     }
   },
 
-  async deleteAbsence(id: string) {
+  async deleteAbsence(userId: string, absenceId: string) {
     try {
-      await deleteDoc(doc(db, 'absences', id));
+      await deleteDoc(doc(db, 'users', userId, 'absences', absenceId));
     } catch (error) {
       console.error("Error eliminando ausencia:", error);
       throw error;

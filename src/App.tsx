@@ -315,11 +315,21 @@ const App: React.FC = () => {
 
                       <div className="flex items-center justify-between mt-auto">
                         <div className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl flex items-center gap-2 ${status.label === 'Trabajando' ? 'bg-green-500/10 text-green-600' :
-                          status.label === 'Inactivo' ? 'bg-slate-100 text-slate-400' : 'bg-orange-500/10 text-orange-600'
+                          status.label === 'Inactivo' ? 'bg-slate-100 text-slate-400' :
+                            status.label === 'Ausente' ? 'bg-red-500/10 text-red-600' : 'bg-orange-500/10 text-orange-600'
                           }`}>
-                          <div className={`w-1.5 h-1.5 rounded-full ${status.label === 'Trabajando' ? 'bg-green-500 animate-pulse' : status.label === 'Inactivo' ? 'bg-slate-300' : 'bg-orange-400'}`}></div>
+                          <div className={`w-1.5 h-1.5 rounded-full ${status.label === 'Trabajando' ? 'bg-green-500 animate-pulse' :
+                            status.label === 'Inactivo' ? 'bg-slate-300' :
+                              status.label === 'Ausente' ? 'bg-red-500' : 'bg-orange-400'}`}></div>
                           {status.label}
                         </div>
+                        {status.reason && (
+                          <div className="absolute top-2 right-12">
+                            <span className="text-[8px] font-black bg-slate-900/5 text-slate-500 px-2 py-1 rounded-lg uppercase tracking-tighter">
+                              {status.reason}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex items-center gap-1.5 text-slate-400">
                           <i className="fas fa-business-time text-[10px]"></i>
                           <p className="text-[10px] font-black tracking-tighter">{emp.weeklyHours || 40}H</p>
@@ -501,7 +511,8 @@ const App: React.FC = () => {
                     doc.text(`Fecha Reporte: ${new Date().toLocaleDateString()}`, 14, 50);
                     const stats = getWeeklyStats(selectedEmployee, records, isCurrentlyOnVacation(selectedEmployee), absences);
                     doc.text(`Horas esta semana: ${stats.total}`, 14, 60);
-                    doc.text(`Estado actual: ${getEmployeeStatus(selectedEmployee, records, absences).label}`, 14, 66);
+                    const statusObj = getEmployeeStatus(selectedEmployee, records, absences);
+                    doc.text(`Estado actual: ${statusObj.label}${statusObj.reason ? ` (${statusObj.reason})` : ''}`, 14, 66);
                     const empRecords = records.filter(r => r.userId === selectedEmployee.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
                     autoTable(doc, {
                       startY: 75,
@@ -603,6 +614,7 @@ const App: React.FC = () => {
                               const updatedVacations = selectedEmployee.vacations!.filter(item => item.id !== v.id);
                               const updatedUser = { ...selectedEmployee, vacations: updatedVacations };
                               try {
+                                // Aquí no necesitamos cambiar dbService porque las vacaciones están integradas en el profile
                                 await dbService.saveUserProfile(updatedUser);
                                 setEmployees(employees.map(emp => emp.id === updatedUser.id ? updatedUser : emp));
                                 setSelectedEmployee(updatedUser);
@@ -672,21 +684,45 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              <button onClick={async () => {
-                if (window.confirm("¿Eliminar empleado permanentemente? Esta acción NO se puede deshacer.")) {
-                  try {
-                    await dbService.deleteUser(selectedEmployee.id);
-                    setEmployees(employees.filter(e => e.id !== selectedEmployee.id));
-                    setSelectedEmployee(null);
-                    setFeedback({ type: 'success', msg: 'Empleado eliminado exitosamente' });
-                  } catch (e) {
-                    setFeedback({ type: 'error', msg: 'Error de conexión al eliminar' });
-                  }
-                  setTimeout(() => setFeedback(null), 3000);
-                }
-              }} className="w-full bg-red-50 hover:bg-red-500 text-red-500 hover:text-white py-4 md:py-5 rounded-3xl font-black text-[11px] uppercase tracking-widest transition-all duration-300 border border-transparent hover:shadow-xl hover:shadow-red-500/20 active:scale-[0.98]">
-                Eliminar Registro Permanentemente
-              </button>
+              <div className="space-y-3">
+                <button
+                  onClick={async () => {
+                    if (window.confirm("¿Aplicar baja laboral (Soft Delete)? El usuario no podrá entrar pero sus datos se conservarán por motivos legales.")) {
+                      try {
+                        await dbService.softDeleteUser(selectedEmployee.id);
+                        setEmployees(employees.filter(e => e.id !== selectedEmployee.id));
+                        setSelectedEmployee(null);
+                        setFeedback({ type: 'success', msg: 'Usuario dado de baja' });
+                      } catch (e) {
+                        setFeedback({ type: 'error', msg: 'Error al dar de baja' });
+                      }
+                      setTimeout(() => setFeedback(null), 3000);
+                    }
+                  }}
+                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 py-4 rounded-3xl font-black text-[11px] uppercase tracking-widest transition-all"
+                >
+                  Dar de Baja (Legal / Soft Delete)
+                </button>
+
+                <button
+                  onClick={async () => {
+                    if (window.confirm("¿ELIMINAR PERMANENTEMENTE? Esta acción borrará todos los fichajes, ausencias y la cuenta de acceso. No se puede deshacer.")) {
+                      try {
+                        await dbService.deleteUserCompletely(selectedEmployee.id);
+                        setEmployees(employees.filter(e => e.id !== selectedEmployee.id));
+                        setSelectedEmployee(null);
+                        setFeedback({ type: 'success', msg: 'Eliminado permanentemente' });
+                      } catch (e) {
+                        setFeedback({ type: 'error', msg: 'Error al eliminar completamente' });
+                      }
+                      setTimeout(() => setFeedback(null), 3000);
+                    }
+                  }}
+                  className="w-full bg-red-50 hover:bg-red-500 text-red-500 hover:text-white py-4 md:py-5 rounded-3xl font-black text-[11px] uppercase tracking-widest transition-all duration-300 border border-transparent hover:shadow-xl hover:shadow-red-500/20 active:scale-[0.98]"
+                >
+                  Eliminar Todo (Hard Delete)
+                </button>
+              </div>
             </div>
           </div>
         </div>

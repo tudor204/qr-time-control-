@@ -15,8 +15,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Inicializar App Check
-if (typeof window !== 'undefined') {
+// Inicializar App Check de forma segura
+if (typeof window !== 'undefined' && import.meta.env.VITE_RECAPTCHA_SITE_KEY) {
   if (import.meta.env.DEV) {
     // @ts-ignore
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
@@ -26,6 +26,8 @@ if (typeof window !== 'undefined') {
     provider: new ReCaptchaEnterpriseProvider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
     isTokenAutoRefreshEnabled: true
   });
+} else {
+  console.warn("App Check no inicializado: Falta VITE_RECAPTCHA_SITE_KEY o no estamos en navegador.");
 }
 
 export const db = getFirestore(app);

@@ -9,41 +9,32 @@ service cloud.firestore {
 
     // Reglas para la colección de usuarios
     match /users/{userId} {
-      // Un usuario solo puede leer su propio perfil, los admins leen todos
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      
-      // Permitir creación propia durante el registro
       allow create: if request.auth != null && request.auth.uid == userId;
-      
-      // Solo los administradores pueden actualizar perfiles (ej. vacaciones, roles)
       allow update: if request.auth != null && isAdmin();
-      
-      // Solo los administradores pueden borrar usuarios
       allow delete: if request.auth != null && isAdmin();
+
+      // Sub-colección de registros de asistencia
+      match /attendance/{recordId} {
+        allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+        allow create: if request.auth != null && request.auth.uid == userId;
+        allow update, delete: if request.auth != null && isAdmin();
+      }
+
+      // Sub-colección de ausencias
+      match /absences/{absenceId} {
+        allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+        allow create: if request.auth != null && request.auth.uid == userId;
+        allow update, delete: if request.auth != null && isAdmin();
+      }
     }
 
-    // Reglas para la colección de registros (asistencia)
-    match /records/{recordId} {
-      // Los empleados solo leen sus propios registros. Admins leen todos.
-      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
-      
-      // Los empleados solo pueden CREAR registros para sí mismos
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      
-      // IMPORTANTE: Los empleados NO pueden editar ni borrar registros una vez creados
-      allow update, delete: if request.auth != null && isAdmin();
+    // Reglas para consultas de tipo Collection Group (usadas por el administrador)
+    match /{path=**}/attendance/{recordId} {
+      allow read: if isAdmin();
     }
-
-    // Reglas para la colección de ausencias
-    match /absences/{absenceId} {
-      // Los empleados solo leen sus propias ausencias. Admins leen todas.
-      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
-      
-      // Los empleados solo pueden CREAR ausencias para sí mismos
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      
-      // Solo los administradores pueden borrar ausencias (opcionalmente)
-      allow update, delete: if request.auth != null && isAdmin();
+    match /{path=**}/absences/{absenceId} {
+      allow read: if isAdmin();
     }
   }
 }

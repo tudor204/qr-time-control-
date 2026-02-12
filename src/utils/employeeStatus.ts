@@ -27,7 +27,8 @@ export const getEmployeeStatus = (emp: User, records: AttendanceRecord[], absenc
             color: 'text-orange-500',
             bg: 'bg-orange-50',
             border: 'border-orange-200',
-            icon: '🏝️'
+            icon: '🏝️',
+            reason: 'Vacaciones'
         };
     }
 
@@ -38,13 +39,14 @@ export const getEmployeeStatus = (emp: User, records: AttendanceRecord[], absenc
             color: 'text-red-500',
             bg: 'bg-red-50',
             border: 'border-red-200',
-            icon: '🗓️'
+            icon: '🗓️',
+            reason: absence.predefinedReason === 'Otro' ? absence.customReason : absence.predefinedReason
         };
     }
 
     // Check if active
     const userRecs = records.filter(r => r.userId === emp.id);
-    const lastRec = userRecs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+    const lastRec = [...userRecs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
     const isActive = lastRec && lastRec.type === RecordType.IN;
 
     if (isActive) {
