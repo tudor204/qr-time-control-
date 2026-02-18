@@ -16,6 +16,7 @@ export interface User {
   vacations?: { id: string; start: string; end: string }[];
   weeklyHours?: number;
   workingDaysPerWeek?: number;
+  totalVacationDays?: number;
   isDeleted?: boolean;
   deletedAt?: string;
 }

@@ -84,3 +84,58 @@ export const getWeeklyStats = (emp: User, records: AttendanceRecord[], isOnVacat
         absentDays: weeklyAbsences
     };
 };
+
+/**
+ * Calcula las estadísticas mensuales de un empleado
+ */
+export const getMonthlyStats = (userId: string, records: AttendanceRecord[]) => {
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    const groups = getGroupedRecords(userId, records);
+
+    const monthlyHours = groups
+        .filter((g: any) => {
+            const d = new Date(g.date);
+            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        })
+        .reduce((acc, curr: any) => acc + calculateDurationHours(curr.in, curr.out), 0);
+
+    return {
+        total: monthlyHours.toFixed(1),
+        monthName: new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(today)
+    };
+};
+
+/**
+ * Calcula el resumen de vacaciones (días consumidos y restantes)
+ */
+export const getVacationSummary = (emp: User) => {
+    const totalAllowed = emp.totalVacationDays || 22;
+    if (!emp.vacations || emp.vacations.length === 0) {
+        return { consumed: 0, remaining: totalAllowed, total: totalAllowed };
+    }
+
+    const currentYear = new Date().getFullYear();
+    let consumed = 0;
+
+    emp.vacations.forEach(v => {
+        const start = new Date(v.start);
+        const end = new Date(v.end);
+
+        // Solo contamos si el periodo es del año actual
+        if (start.getFullYear() === currentYear || end.getFullYear() === currentYear) {
+            // Cálculo simple de días naturales entre fechas
+            const diffTime = Math.abs(end.getTime() - start.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            consumed += diffDays;
+        }
+    });
+
+    return {
+        consumed,
+        remaining: Math.max(0, totalAllowed - consumed),
+        total: totalAllowed
+    };
+};

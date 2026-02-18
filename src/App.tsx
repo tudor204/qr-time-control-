@@ -14,7 +14,8 @@ import autoTable from 'jspdf-autotable';
 import { LoginForm } from './components/Auth/LoginForm';
 import { ProductivityWidget } from './components/Dashboard/ProductivityWidget';
 import { ReportsTab } from './components/Admin/ReportsTab';
-import { calculateDurationHours, formatDuration, getGroupedRecords, getWeeklyStats } from './utils/timeCalculations';
+import { WorkHistory } from './components/Employee/WorkHistory';
+import { calculateDurationHours, formatDuration, getGroupedRecords, getWeeklyStats, getVacationSummary } from './utils/timeCalculations';
 import { isCurrentlyOnVacation, getEmployeeStatus } from './utils/employeeStatus';
 
 declare const QRCode: any;
@@ -31,6 +32,7 @@ const App: React.FC = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'history' | 'employees' | 'settings' | 'reports'>('history');
+  const [employeeTab, setEmployeeTab] = useState<'today' | 'history'>('today');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
   const [vacationDate, setVacationDate] = useState({ start: '', end: '' });
   const [editingVacationId, setEditingVacationId] = useState<string | null>(null);
@@ -232,14 +234,20 @@ const App: React.FC = () => {
             <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">Smart Attendance</p>
           </div>
         </div>
-        <button onClick={() => {
-          signOut(auth);
-          setFeedback({ type: 'success', msg: 'Sesión cerrada correctamente' });
-          setTimeout(() => setFeedback(null), 2000);
-        }} className="group flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all font-bold text-xs">
-          <span className="hidden sm:block">Cerrar Sesión</span>
-          <i className="fas fa-power-off transition-transform group-hover:rotate-12"></i>
-        </button>
+        <div className="flex items-center gap-6">
+          <div className="hidden md:flex flex-col items-end">
+            <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-0.5">Sesión Activa</span>
+            <p className="text-sm font-black text-slate-900">Bienvenido, <span className="text-blue-600">{user.name}</span></p>
+          </div>
+          <button onClick={() => {
+            signOut(auth);
+            setFeedback({ type: 'success', msg: 'Sesión cerrada correctamente' });
+            setTimeout(() => setFeedback(null), 2000);
+          }} className="group flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all font-bold text-xs">
+            <span className="hidden sm:block">Cerrar Sesión</span>
+            <i className="fas fa-power-off transition-transform group-hover:rotate-12"></i>
+          </button>
+        </div>
       </header>
 
       <main className="p-6 max-w-5xl mx-auto">
@@ -368,154 +376,133 @@ const App: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="max-w-md mx-auto space-y-8">
-            <ProductivityWidget employee={user} title="Mi Actividad" records={records} absences={absences} />
-
-            <div className="flex gap-4 no-print">
-              <button
-                onClick={() => setShowAbsenceModal(true)}
-                className="flex-1 bg-white hover:bg-red-50 text-red-500 py-5 rounded-[2.5rem] font-black border-2 border-red-100 shadow-sm transition-all uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 active:scale-95"
-              >
-                <i className="fas fa-calendar-times"></i>
-                Marcar Ausencia
-              </button>
-            </div>
-
-            <div>
-              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-6 mb-4">Vacaciones Programadas</h3>
-              <div className="space-y-3">
-                {user.vacations?.map((v, i) => (
-                  <div key={i} className="group bg-white p-5 rounded-[2rem] flex items-center gap-5 border border-slate-100 shadow-sm hover:shadow-md transition-all">
-                    <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center text-lg group-hover:bg-orange-500 group-hover:text-white transition-colors"><i className="fas fa-calendar-check"></i></div>
-                    <div>
-                      <p className="text-[11px] font-black text-slate-800 uppercase tracking-wider">Período de Descanso</p>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5 block">Del {v.start} al {v.end}</span>
-                    </div>
-                  </div>
-                ))}
-                {(!user.vacations || user.vacations.length === 0) && (
-                  <div className="flex flex-col items-center justify-center p-12 bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-[2.5rem] opacity-60">
-                    <i className="fas fa-umbrella-beach text-3xl text-slate-200 mb-3"></i>
-                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Sin períodos activos</p>
-                  </div>
-                )}
+          <div className="max-w-6xl mx-auto h-[calc(100vh-140px)] flex flex-col gap-6">
+            <div className="flex justify-between items-center no-print">
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setEmployeeTab('today')}
+                  className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${employeeTab === 'today' ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}
+                >
+                  Hoy
+                </button>
+                <button
+                  onClick={() => setEmployeeTab('history')}
+                  className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${employeeTab === 'history' ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}
+                >
+                  Mi Historial
+                </button>
               </div>
             </div>
 
-            <div>
-              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-6 mb-4">Historial Personal</h3>
-              <div className="space-y-4">
-                {/* Fusionar registros de asistencia y ausencias */}
-                {(() => {
-                  const grouped = getGroupedRecords(user.id, records);
-                  const userAbsences = absences.filter(a => a.userId === user.id);
-                  const allDays = [...grouped];
+            {employeeTab === 'today' ? (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0">
+                {/* Columna Lateral (1/3): Menos protagonismo visual */}
+                <div className="lg:col-span-1 space-y-6 flex flex-col min-h-0">
+                  <div className="shrink-0">
+                    <ProductivityWidget employee={user} title="Mi Actividad" records={records} absences={absences} />
+                  </div>
 
-                  userAbsences.forEach(abs => {
-                    if (!allDays.find((d: any) => d.date === abs.date)) {
-                      allDays.push({ date: abs.date, isAbsence: true, absence: abs });
-                    }
-                  });
+                  <div className="flex gap-4 no-print shrink-0">
+                    <button
+                      onClick={() => setShowAbsenceModal(true)}
+                      className="flex-1 bg-white hover:bg-red-50 text-red-500 py-4 rounded-3xl font-black border-2 border-red-100 shadow-sm transition-all uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 active:scale-95"
+                    >
+                      <i className="fas fa-calendar-times text-base"></i>
+                      Marcar Ausencia
+                    </button>
+                  </div>
 
-                  return allDays.sort((a: any, b: any) => b.date.localeCompare(a.date)).map((day: any, i) => (
-                    <div key={i} className={`group p-6 rounded-[2.5rem] border transition-all ${day.isAbsence ? 'bg-red-50/30 border-red-100' : 'bg-white border-slate-100 shadow-sm hover:shadow-xl hover:shadow-blue-600/5'}`}>
-                      <div className="flex justify-between items-center mb-6">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] ${day.isAbsence ? 'bg-red-100 text-red-500' : 'bg-blue-50 text-blue-600'}`}>
-                            <i className={`fas ${day.isAbsence ? 'fa-calendar-times' : 'fa-calendar-day'}`}></i>
+                  {/* Vacaciones más compactas verticalmente */}
+                  <div className="flex-1 min-h-0 bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Vacaciones</h3>
+                      <i className="fas fa-umbrella-beach text-slate-200"></i>
+                    </div>
+                    <div className="overflow-y-auto custom-scrollbar flex-1 space-y-2 pr-2">
+                      {user.vacations?.map((v, i) => (
+                        <div key={i} className="group bg-slate-50 p-3 rounded-2xl flex items-center gap-3 border border-transparent hover:border-orange-200 transition-all">
+                          <div className="w-8 h-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center text-xs shrink-0"><i className="fas fa-calendar-check"></i></div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[9px] font-black text-slate-800 uppercase tracking-wider truncate">Período</p>
+                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter block truncate">Del {v.start} al {v.end}</span>
                           </div>
-                          <span className="text-sm font-black text-slate-800 uppercase tracking-tight">{new Date(day.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}</span>
                         </div>
-                        {day.isAbsence ? (
-                          <span className="text-[9px] font-black bg-red-500 text-white px-4 py-1.5 rounded-full shadow-lg shadow-red-900/10 uppercase tracking-wider">AUSENTE</span>
-                        ) : (
-                          <span className="text-[10px] font-black bg-slate-900 text-white px-4 py-1.5 rounded-full shadow-lg shadow-slate-900/10 uppercase tracking-wider">{formatDuration(calculateDurationHours(day.in, day.out))}</span>
-                        )}
-                      </div>
-
-                      {day.isAbsence ? (
-                        <div className="bg-white/50 p-4 rounded-2xl border border-red-100">
-                          <p className="text-[9px] text-red-400 font-black uppercase tracking-widest mb-1 shadow-sm">Motivo:</p>
-                          <p className="font-bold text-slate-700 text-sm">{day.absence.predefinedReason === 'Otro' ? day.absence.customReason : day.absence.predefinedReason}</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-slate-50 p-4 rounded-2xl border border-transparent transition-colors group-hover:bg-green-50/50 group-hover:border-green-100">
-                            <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                              <i className="fas fa-arrow-right-to-bracket text-green-500"></i>
-                              Entrada
-                            </p>
-                            <p className="font-black text-slate-700 text-lg tracking-tight">{day.in ? new Date(day.in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
-                          </div>
-                          <div className="bg-slate-50 p-4 rounded-2xl border border-transparent transition-colors group-hover:bg-red-50/50 group-hover:border-red-100">
-                            <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                              <i className="fas fa-arrow-right-from-bracket text-red-500"></i>
-                              Salida
-                            </p>
-                            <p className="font-black text-slate-700 text-lg tracking-tight">{day.out ? new Date(day.out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
-                          </div>
+                      ))}
+                      {(!user.vacations || user.vacations.length === 0) && (
+                        <div className="flex flex-col items-center justify-center py-6 opacity-40">
+                          <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em]">Sin períodos</p>
                         </div>
                       )}
                     </div>
-                  ));
-                })()}
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-
-      {user.role === UserRole.EMPLOYEE && (
-        <div className="fixed bottom-8 left-0 right-0 z-50 flex justify-center px-6 no-print">
-          <button
-            disabled={
-              absences.some(a => a.userId === user.id && a.date === new Date().toISOString().split('T')[0]) ||
-              records.filter(r => r.userId === user.id && r.timestamp.startsWith(new Date().toISOString().split('T')[0])).length >= 2
-            }
-            onClick={() => setShowScanner(true)}
-            className="w-full max-w-sm bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-[2.5rem] font-black shadow-[0_20px_40px_rgba(37,99,235,0.3)] flex items-center justify-center gap-4 active:scale-95 transition-all uppercase tracking-[0.2em] text-sm disabled:bg-slate-300 disabled:opacity-50 disabled:scale-100 disabled:shadow-none"
-          >
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <i className="fas fa-qrcode text-lg"></i>
-            </div>
-            {getDayStatusText()}
-          </button>
-        </div>
-      )}
-
-      {selectedEmployee && user.role === UserRole.ADMIN && (
-        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 no-print">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => { setSelectedEmployee(null); setEditingVacationId(null); setVacationDate({ start: '', end: '' }); }}></div>
-          <div className="bg-slate-50 w-full max-w-2xl rounded-t-[3rem] md:rounded-[3.5rem] shadow-[0_30px_90px_rgba(0,0,0,0.3)] relative z-10 overflow-hidden flex flex-col max-h-[92vh] animate-in slide-in-from-bottom-20 duration-500 ease-out">
-            <div className="p-8 md:p-10 bg-white border-b border-slate-100 flex justify-between items-center">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-xl shadow-xl shadow-blue-600/20">
-                  <i className="fas fa-user-tie"></i>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">{selectedEmployee.name}</h3>
-                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mt-1">Perfil del Trabajador</p>
+
+                {/* Columna de Tabla/Actividad (2/3): Protagonista */}
+                <div className="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col h-full min-h-0">
+                  <div className="flex justify-between items-center mb-8">
+                    <div>
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Listado de Actividad Reciente</h3>
+                      <p className="text-[11px] font-black text-blue-600 uppercase tracking-widest mt-1">Detalle de tus fichajes</p>
+                    </div>
+                    <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
+                      <i className="fas fa-list-ul"></i>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-4">
+                    {(() => {
+                      const grouped = getGroupedRecords(user.id, records);
+                      return grouped.map((day: any, i) => (
+                        <div key={i} className="group p-6 rounded-[2.5rem] bg-slate-50 border border-transparent hover:border-blue-100 transition-all shadow-sm">
+                          <div className="flex justify-between items-center mb-5">
+                            <div className="flex items-center gap-3">
+                              <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></div>
+                              <span className="text-base font-black text-slate-800 uppercase tracking-tight">{new Date(day.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}</span>
+                            </div>
+                            <span className="text-[11px] font-black bg-slate-900 text-white px-5 py-2 rounded-full shadow-lg shadow-slate-900/5 uppercase tracking-wider">{formatDuration(calculateDurationHours(day.in, day.out))}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-6">
+                            <div className="bg-white p-5 rounded-2xl border border-white shadow-sm hover:shadow-md transition-shadow">
+                              <p className="text-[10px] text-slate-400 font-black uppercase mb-1.5 tracking-widest flex items-center gap-2">
+                                <i className="fas fa-sign-in-alt text-green-500"></i>
+                                Entrada
+                              </p>
+                              <p className="font-black text-slate-700 text-xl tracking-tight">{day.in ? new Date(day.in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
+                            </div>
+                            <div className="bg-white p-5 rounded-2xl border border-white shadow-sm hover:shadow-md transition-shadow">
+                              <p className="text-[10px] text-slate-400 font-black uppercase mb-1.5 tracking-widest flex items-center gap-2">
+                                <i className="fas fa-sign-out-alt text-red-500"></i>
+                                Salida
+                              </p>
+                              <p className="font-black text-slate-700 text-xl tracking-tight">{day.out ? new Date(day.out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
+            ) : (
+              <div className="flex-1 min-h-0">
+                <WorkHistory
+                  user={user}
+                  records={records}
+                  absences={absences}
+                  onExportPDF={() => {
                     const doc = new jsPDF();
-                    // ... (logica de PDF intacta)
                     doc.setFontSize(20);
-                    doc.text('Reporte de Empleado', 14, 22);
+                    doc.text('Mi Historial Laboral', 14, 22);
                     doc.setFontSize(10);
-                    doc.text(`Nombre: ${selectedEmployee.name}`, 14, 32);
-                    doc.text(`Email: ${selectedEmployee.email}`, 14, 38);
-                    doc.text(`Horas Semanales: ${selectedEmployee.weeklyHours || 40}h`, 14, 44);
-                    doc.text(`Fecha Reporte: ${new Date().toLocaleDateString()}`, 14, 50);
-                    const stats = getWeeklyStats(selectedEmployee, records, isCurrentlyOnVacation(selectedEmployee), absences);
-                    doc.text(`Horas esta semana: ${stats.total}`, 14, 60);
-                    const statusObj = getEmployeeStatus(selectedEmployee, records, absences);
-                    doc.text(`Estado actual: ${statusObj.label}${statusObj.reason ? ` (${statusObj.reason})` : ''}`, 14, 66);
-                    const empRecords = records.filter(r => r.userId === selectedEmployee.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                    doc.text(`Empleado: ${user.name}`, 14, 32);
+                    doc.text(`Email: ${user.email}`, 14, 38);
+
+                    const vacSummary = getVacationSummary(user);
+                    doc.text(`Vacaciones: ${vacSummary.consumed} disfrutados / ${vacSummary.total} totales`, 14, 48);
+
+                    const empRecords = records.filter(r => r.userId === user.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
                     autoTable(doc, {
-                      startY: 75,
+                      startY: 55,
                       head: [['Fecha', 'Hora', 'Tipo', 'Ubicación']],
                       body: empRecords.map(r => [
                         new Date(r.timestamp).toLocaleDateString(),
@@ -524,289 +511,403 @@ const App: React.FC = () => {
                         r.location || '-'
                       ]),
                     });
-                    doc.save(`Reporte_${selectedEmployee.name.replace(/\s+/g, '_')}.pdf`);
+                    doc.save(`Historial_${user.name.replace(/\s+/g, '_')}.pdf`);
                   }}
-                  className="bg-slate-900 text-white w-12 h-12 flex items-center justify-center rounded-2xl hover:bg-slate-800 shadow-lg shadow-slate-900/10 transition-all group"
-                  title="Exportar PDF Completo"
-                >
-                  <i className="fas fa-file-pdf transition-transform group-hover:scale-110"></i>
-                </button>
-                <button
-                  onClick={() => { setSelectedEmployee(null); setEditingVacationId(null); setVacationDate({ start: '', end: '' }); }}
-                  className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white border border-slate-100 text-slate-400 hover:text-red-500 hover:bg-red-50 shadow-sm transition-all"
-                >
-                  <i className="fas fa-times"></i>
-                </button>
+                />
               </div>
-            </div>
-            <div className="p-8 md:p-10 overflow-y-auto bg-slate-50 space-y-8 custom-scrollbar">
-              <ProductivityWidget employee={selectedEmployee} title="Productividad" records={records} absences={absences} />
+            )}
+          </div>
+        )}
+      </main>
 
-              {/* Editor de Horas Semanales */}
-              <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50/50 rounded-full blur-3xl -mr-12 -mt-12 group-hover:bg-blue-100 transition-colors duration-500"></div>
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 relative z-10">
-                  <i className="fas fa-hourglass-half mr-2 text-blue-400"></i>
-                  Carga Horaria Semanal
-                </h4>
-                <div className="flex items-center gap-6 relative z-10">
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="1"
-                      max="168"
-                      value={selectedEmployee.weeklyHours || 40}
-                      onChange={async (e) => {
-                        const newHours = parseInt(e.target.value) || 40;
-                        const updatedUser = { ...selectedEmployee, weeklyHours: newHours };
-                        try {
-                          await dbService.saveUserProfile(updatedUser);
-                          setEmployees(employees.map(emp => emp.id === updatedUser.id ? updatedUser : emp));
-                          setSelectedEmployee(updatedUser);
-                          setFeedback({ type: 'success', msg: `Horas actualizadas a ${newHours}h` });
-                          setTimeout(() => setFeedback(null), 2000);
-                        } catch (e) {
-                          setFeedback({ type: 'error', msg: 'Error al actualizar' });
-                          setTimeout(() => setFeedback(null), 2000);
-                        }
-                      }}
-                      className="w-24 p-4 bg-slate-50 border-2 border-transparent rounded-[1.5rem] text-center text-xl font-black text-slate-900 outline-none focus:bg-white focus:border-blue-600/20 transition-all font-outfit"
-                    />
+      {
+        user.role === UserRole.EMPLOYEE && (
+          <div className="fixed bottom-8 left-0 right-0 z-50 flex justify-center px-6 no-print">
+            <button
+              disabled={
+                absences.some(a => a.userId === user.id && a.date === new Date().toISOString().split('T')[0]) ||
+                records.filter(r => r.userId === user.id && r.timestamp.startsWith(new Date().toISOString().split('T')[0])).length >= 2
+              }
+              onClick={() => setShowScanner(true)}
+              className="w-full max-w-sm bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-[2.5rem] font-black shadow-[0_20px_40px_rgba(37,99,235,0.3)] flex items-center justify-center gap-4 active:scale-95 transition-all uppercase tracking-[0.2em] text-sm disabled:bg-slate-300 disabled:opacity-50 disabled:scale-100 disabled:shadow-none"
+            >
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                <i className="fas fa-qrcode text-lg"></i>
+              </div>
+              {getDayStatusText()}
+            </button>
+          </div>
+        )
+      }
+
+      {
+        selectedEmployee && user.role === UserRole.ADMIN && (
+          <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 no-print">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => { setSelectedEmployee(null); setEditingVacationId(null); setVacationDate({ start: '', end: '' }); }}></div>
+            <div className="bg-slate-50 w-full max-w-2xl rounded-t-[3rem] md:rounded-[3.5rem] shadow-[0_30px_90px_rgba(0,0,0,0.3)] relative z-10 overflow-hidden flex flex-col max-h-[92vh] animate-in slide-in-from-bottom-20 duration-500 ease-out">
+              <div className="p-8 md:p-10 bg-white border-b border-slate-100 flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-xl shadow-xl shadow-blue-600/20">
+                    <i className="fas fa-user-tie"></i>
                   </div>
                   <div>
-                    <p className="text-sm font-black text-slate-800 tracking-tight">Horas Estimadas</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Calculado para balance semanal</p>
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">{selectedEmployee.name}</h3>
+                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mt-1">Perfil del Trabajador</p>
                   </div>
                 </div>
-              </div>
-
-              <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">
-                  <i className="fas fa-plane-departure mr-2 text-orange-400"></i>
-                  {editingVacationId ? 'Editar Periodo' : 'Planificar Vacaciones'}
-                </h4>
-
-                {/* Lista de vacaciones existentes */}
-                {selectedEmployee.vacations && selectedEmployee.vacations.length > 0 && (
-                  <div className="mb-8 space-y-3">
-                    {selectedEmployee.vacations.map((v) => (
-                      <div key={v.id || v.start + v.end} className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-300 ${editingVacationId === v.id ? 'bg-blue-50/50 border-blue-600/20 shadow-lg shadow-blue-500/5' : 'bg-slate-50 border-transparent hover:border-slate-100'}`}>
-                        <div className="flex items-center gap-3">
-                          <i className={`fas fa-circle text-[6px] ${editingVacationId === v.id ? 'text-blue-500 animate-pulse' : 'text-slate-300'}`}></i>
-                          <span className="text-xs font-black text-slate-700 tracking-tight">
-                            {new Date(v.start).toLocaleDateString()} &mdash; {new Date(v.end).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              setEditingVacationId(v.id!);
-                              setVacationDate({ start: v.start, end: v.end });
-                            }}
-                            className="w-9 h-9 flex items-center justify-center bg-white text-blue-600 rounded-xl border border-slate-100 hover:bg-blue-600 hover:text-white hover:border-blue-600 shadow-sm transition-all"
-                            title="Editar"
-                          >
-                            <i className="fas fa-pen text-xs"></i>
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (!window.confirm("¿Eliminar este periodo?")) return;
-                              const updatedVacations = selectedEmployee.vacations!.filter(item => item.id !== v.id);
-                              const updatedUser = { ...selectedEmployee, vacations: updatedVacations };
-                              try {
-                                // Aquí no necesitamos cambiar dbService porque las vacaciones están integradas en el profile
-                                await dbService.saveUserProfile(updatedUser);
-                                setEmployees(employees.map(emp => emp.id === updatedUser.id ? updatedUser : emp));
-                                setSelectedEmployee(updatedUser);
-                                setFeedback({ type: 'success', msg: 'Periodo eliminado' });
-                                if (editingVacationId === v.id) {
-                                  setEditingVacationId(null);
-                                  setVacationDate({ start: '', end: '' });
-                                }
-                              } catch (e) {
-                                setFeedback({ type: 'error', msg: 'Error al eliminar' });
-                              }
-                              setTimeout(() => setFeedback(null), 3000);
-                            }}
-                            className="w-9 h-9 flex items-center justify-center bg-white text-red-500 rounded-xl border border-slate-100 hover:bg-red-500 hover:text-white hover:border-red-500 shadow-sm transition-all"
-                            title="Eliminar"
-                          >
-                            <i className="fas fa-trash-alt text-xs"></i>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                  <div className="flex-1 space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Fecha Inicio</label>
-                    <input type="date" value={vacationDate.start} onChange={e => setVacationDate({ ...vacationDate, start: e.target.value })} className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl text-[11px] font-black text-slate-700 outline-none focus:bg-white focus:border-blue-600/20 transition-all font-outfit" />
-                  </div>
-                  <div className="flex-1 space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Fecha Fin</label>
-                    <input type="date" value={vacationDate.end} onChange={e => setVacationDate({ ...vacationDate, end: e.target.value })} className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl text-[11px] font-black text-slate-700 outline-none focus:bg-white focus:border-blue-600/20 transition-all font-outfit" />
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  {editingVacationId && (
-                    <button
-                      onClick={() => {
-                        setEditingVacationId(null);
-                        setVacationDate({ start: '', end: '' });
-                      }}
-                      className="flex-1 bg-white border border-slate-100 text-slate-400 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm"
-                    >
-                      Cancelar
-                    </button>
-                  )}
-                  <button onClick={async () => {
-                    if (!vacationDate.start || !vacationDate.end) return;
-                    let updatedVacations = [...(selectedEmployee.vacations || [])];
-                    if (editingVacationId) {
-                      updatedVacations = updatedVacations.map(v => v.id === editingVacationId ? { ...v, start: vacationDate.start, end: vacationDate.end } : v);
-                    } else {
-                      updatedVacations.push({ id: Date.now().toString(), start: vacationDate.start, end: vacationDate.end });
-                    }
-                    const updatedUser = { ...selectedEmployee, vacations: updatedVacations };
-                    await dbService.saveUserProfile(updatedUser);
-                    setEmployees(employees.map(emp => emp.id === updatedUser.id ? updatedUser : emp));
-                    setSelectedEmployee(updatedUser);
-                    setVacationDate({ start: '', end: '' });
-                    setEditingVacationId(null);
-                    setFeedback({ type: 'success', msg: editingVacationId ? 'Periodo actualizado' : 'Periodo añadido' });
-                    setTimeout(() => setFeedback(null), 2000);
-                  }} className="flex-[2] bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-[0.98] transition-all">
-                    {editingVacationId ? 'Guardar Cambios' : 'Asignar Vacaciones'}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const doc = new jsPDF();
+                      // ... (logica de PDF intacta)
+                      doc.setFontSize(20);
+                      doc.text('Reporte de Empleado', 14, 22);
+                      doc.setFontSize(10);
+                      doc.text(`Nombre: ${selectedEmployee.name}`, 14, 32);
+                      doc.text(`Email: ${selectedEmployee.email}`, 14, 38);
+                      doc.text(`Horas Semanales: ${selectedEmployee.weeklyHours || 40}h`, 14, 44);
+                      doc.text(`Fecha Reporte: ${new Date().toLocaleDateString()}`, 14, 50);
+                      const stats = getWeeklyStats(selectedEmployee, records, isCurrentlyOnVacation(selectedEmployee), absences);
+                      doc.text(`Horas esta semana: ${stats.total}`, 14, 60);
+                      const statusObj = getEmployeeStatus(selectedEmployee, records, absences);
+                      doc.text(`Estado actual: ${statusObj.label}${statusObj.reason ? ` (${statusObj.reason})` : ''}`, 14, 66);
+                      const empRecords = records.filter(r => r.userId === selectedEmployee.id).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                      autoTable(doc, {
+                        startY: 75,
+                        head: [['Fecha', 'Hora', 'Tipo', 'Ubicación']],
+                        body: empRecords.map(r => [
+                          new Date(r.timestamp).toLocaleDateString(),
+                          new Date(r.timestamp).toLocaleTimeString(),
+                          r.type,
+                          r.location || '-'
+                        ]),
+                      });
+                      doc.save(`Reporte_${selectedEmployee.name.replace(/\s+/g, '_')}.pdf`);
+                    }}
+                    className="bg-slate-900 text-white w-12 h-12 flex items-center justify-center rounded-2xl hover:bg-slate-800 shadow-lg shadow-slate-900/10 transition-all group"
+                    title="Exportar PDF Completo"
+                  >
+                    <i className="fas fa-file-pdf transition-transform group-hover:scale-110"></i>
+                  </button>
+                  <button
+                    onClick={() => { setSelectedEmployee(null); setEditingVacationId(null); setVacationDate({ start: '', end: '' }); }}
+                    className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white border border-slate-100 text-slate-400 hover:text-red-500 hover:bg-red-50 shadow-sm transition-all"
+                  >
+                    <i className="fas fa-times"></i>
                   </button>
                 </div>
               </div>
+              <div className="p-8 md:p-10 overflow-y-auto bg-slate-50 space-y-8 custom-scrollbar">
+                <ProductivityWidget employee={selectedEmployee} title="Productividad" records={records} absences={absences} />
 
-              <div className="space-y-3">
-                <button
-                  onClick={async () => {
-                    if (window.confirm("¿Aplicar baja laboral (Soft Delete)? El usuario no podrá entrar pero sus datos se conservarán por motivos legales.")) {
-                      try {
-                        await dbService.softDeleteUser(selectedEmployee.id);
-                        setEmployees(employees.filter(e => e.id !== selectedEmployee.id));
-                        setSelectedEmployee(null);
-                        setFeedback({ type: 'success', msg: 'Usuario dado de baja' });
-                      } catch (e) {
-                        setFeedback({ type: 'error', msg: 'Error al dar de baja' });
-                      }
-                      setTimeout(() => setFeedback(null), 3000);
-                    }
-                  }}
-                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 py-4 rounded-3xl font-black text-[11px] uppercase tracking-widest transition-all"
-                >
-                  Dar de Baja (Legal / Soft Delete)
-                </button>
+                {/* Editor de Horas Semanales */}
+                <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50/50 rounded-full blur-3xl -mr-12 -mt-12 group-hover:bg-blue-100 transition-colors duration-500"></div>
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 relative z-10">
+                    <i className="fas fa-hourglass-half mr-2 text-blue-400"></i>
+                    Carga Horaria Semanal
+                  </h4>
+                  <div className="flex items-center gap-6 relative z-10">
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="1"
+                        max="168"
+                        value={selectedEmployee.weeklyHours || 40}
+                        onChange={async (e) => {
+                          const newHours = parseInt(e.target.value) || 40;
+                          const updatedUser = { ...selectedEmployee, weeklyHours: newHours };
+                          try {
+                            await dbService.saveUserProfile(updatedUser);
+                            setEmployees(employees.map(emp => emp.id === updatedUser.id ? updatedUser : emp));
+                            setSelectedEmployee(updatedUser);
+                            setFeedback({ type: 'success', msg: `Horas actualizadas a ${newHours}h` });
+                            setTimeout(() => setFeedback(null), 2000);
+                          } catch (e) {
+                            setFeedback({ type: 'error', msg: 'Error al actualizar' });
+                            setTimeout(() => setFeedback(null), 2000);
+                          }
+                        }}
+                        className="w-24 p-4 bg-slate-50 border-2 border-transparent rounded-[1.5rem] text-center text-xl font-black text-slate-900 outline-none focus:bg-white focus:border-blue-600/20 transition-all font-outfit"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-slate-800 tracking-tight">Horas Estimadas</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Calculado para balance semanal</p>
+                    </div>
+                  </div>
+                </div>
 
-                <button
-                  onClick={async () => {
-                    if (window.confirm("¿ELIMINAR PERMANENTEMENTE? Esta acción borrará todos los fichajes, ausencias y la cuenta de acceso. No se puede deshacer.")) {
-                      try {
-                        await dbService.deleteUserCompletely(selectedEmployee.id);
-                        setEmployees(employees.filter(e => e.id !== selectedEmployee.id));
-                        setSelectedEmployee(null);
-                        setFeedback({ type: 'success', msg: 'Eliminado permanentemente' });
-                      } catch (e) {
-                        setFeedback({ type: 'error', msg: 'Error al eliminar completamente' });
+                {/* Editor de Días de Vacaciones Totales */}
+                <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-orange-50/50 rounded-full blur-3xl -mr-12 -mt-12 group-hover:bg-orange-100 transition-colors duration-500"></div>
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 relative z-10">
+                    <i className="fas fa-umbrella-beach mr-2 text-orange-400"></i>
+                    Días de Vacaciones Anuales
+                  </h4>
+                  <div className="flex items-center gap-6 relative z-10">
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="365"
+                        value={selectedEmployee.totalVacationDays || 22}
+                        onChange={async (e) => {
+                          const newDays = parseInt(e.target.value) || 0;
+                          const updatedUser = { ...selectedEmployee, totalVacationDays: newDays };
+                          try {
+                            await dbService.saveUserProfile(updatedUser);
+                            setEmployees(employees.map(emp => emp.id === updatedUser.id ? updatedUser : emp));
+                            setSelectedEmployee(updatedUser);
+                            setFeedback({ type: 'success', msg: `Vacaciones actualizadas a ${newDays} días` });
+                            setTimeout(() => setFeedback(null), 2000);
+                          } catch (e) {
+                            setFeedback({ type: 'error', msg: 'Error al actualizar' });
+                            setTimeout(() => setFeedback(null), 2000);
+                          }
+                        }}
+                        className="w-24 p-4 bg-slate-50 border-2 border-transparent rounded-[1.5rem] text-center text-xl font-black text-slate-900 outline-none focus:bg-white focus:border-orange-600/20 transition-all font-outfit"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-slate-800 tracking-tight">Días por Año</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Configuración personalizada</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                  <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">
+                    <i className="fas fa-plane-departure mr-2 text-orange-400"></i>
+                    {editingVacationId ? 'Editar Periodo' : 'Planificar Vacaciones'}
+                  </h4>
+
+                  {/* Lista de vacaciones existentes */}
+                  {selectedEmployee.vacations && selectedEmployee.vacations.length > 0 && (
+                    <div className="mb-8 space-y-3">
+                      {selectedEmployee.vacations.map((v) => (
+                        <div key={v.id || v.start + v.end} className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-300 ${editingVacationId === v.id ? 'bg-blue-50/50 border-blue-600/20 shadow-lg shadow-blue-500/5' : 'bg-slate-50 border-transparent hover:border-slate-100'}`}>
+                          <div className="flex items-center gap-3">
+                            <i className={`fas fa-circle text-[6px] ${editingVacationId === v.id ? 'text-blue-500 animate-pulse' : 'text-slate-300'}`}></i>
+                            <span className="text-xs font-black text-slate-700 tracking-tight">
+                              {new Date(v.start).toLocaleDateString()} &mdash; {new Date(v.end).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingVacationId(v.id!);
+                                setVacationDate({ start: v.start, end: v.end });
+                              }}
+                              className="w-9 h-9 flex items-center justify-center bg-white text-blue-600 rounded-xl border border-slate-100 hover:bg-blue-600 hover:text-white hover:border-blue-600 shadow-sm transition-all"
+                              title="Editar"
+                            >
+                              <i className="fas fa-pen text-xs"></i>
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (!window.confirm("¿Eliminar este periodo?")) return;
+                                const updatedVacations = selectedEmployee.vacations!.filter(item => item.id !== v.id);
+                                const updatedUser = { ...selectedEmployee, vacations: updatedVacations };
+                                try {
+                                  // Aquí no necesitamos cambiar dbService porque las vacaciones están integradas en el profile
+                                  await dbService.saveUserProfile(updatedUser);
+                                  setEmployees(employees.map(emp => emp.id === updatedUser.id ? updatedUser : emp));
+                                  setSelectedEmployee(updatedUser);
+                                  setFeedback({ type: 'success', msg: 'Periodo eliminado' });
+                                  if (editingVacationId === v.id) {
+                                    setEditingVacationId(null);
+                                    setVacationDate({ start: '', end: '' });
+                                  }
+                                } catch (e) {
+                                  setFeedback({ type: 'error', msg: 'Error al eliminar' });
+                                }
+                                setTimeout(() => setFeedback(null), 3000);
+                              }}
+                              className="w-9 h-9 flex items-center justify-center bg-white text-red-500 rounded-xl border border-slate-100 hover:bg-red-500 hover:text-white hover:border-red-500 shadow-sm transition-all"
+                              title="Eliminar"
+                            >
+                              <i className="fas fa-trash-alt text-xs"></i>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row gap-3 mb-6">
+                    <div className="flex-1 space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Fecha Inicio</label>
+                      <input type="date" value={vacationDate.start} onChange={e => setVacationDate({ ...vacationDate, start: e.target.value })} className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl text-[11px] font-black text-slate-700 outline-none focus:bg-white focus:border-blue-600/20 transition-all font-outfit" />
+                    </div>
+                    <div className="flex-1 space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Fecha Fin</label>
+                      <input type="date" value={vacationDate.end} onChange={e => setVacationDate({ ...vacationDate, end: e.target.value })} className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl text-[11px] font-black text-slate-700 outline-none focus:bg-white focus:border-blue-600/20 transition-all font-outfit" />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    {editingVacationId && (
+                      <button
+                        onClick={() => {
+                          setEditingVacationId(null);
+                          setVacationDate({ start: '', end: '' });
+                        }}
+                        className="flex-1 bg-white border border-slate-100 text-slate-400 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm"
+                      >
+                        Cancelar
+                      </button>
+                    )}
+                    <button onClick={async () => {
+                      if (!vacationDate.start || !vacationDate.end) return;
+                      let updatedVacations = [...(selectedEmployee.vacations || [])];
+                      if (editingVacationId) {
+                        updatedVacations = updatedVacations.map(v => v.id === editingVacationId ? { ...v, start: vacationDate.start, end: vacationDate.end } : v);
+                      } else {
+                        updatedVacations.push({ id: Date.now().toString(), start: vacationDate.start, end: vacationDate.end });
                       }
-                      setTimeout(() => setFeedback(null), 3000);
-                    }
-                  }}
-                  className="w-full bg-red-50 hover:bg-red-500 text-red-500 hover:text-white py-4 md:py-5 rounded-3xl font-black text-[11px] uppercase tracking-widest transition-all duration-300 border border-transparent hover:shadow-xl hover:shadow-red-500/20 active:scale-[0.98]"
-                >
-                  Eliminar Todo (Hard Delete)
-                </button>
+                      const updatedUser = { ...selectedEmployee, vacations: updatedVacations };
+                      await dbService.saveUserProfile(updatedUser);
+                      setEmployees(employees.map(emp => emp.id === updatedUser.id ? updatedUser : emp));
+                      setSelectedEmployee(updatedUser);
+                      setVacationDate({ start: '', end: '' });
+                      setEditingVacationId(null);
+                      setFeedback({ type: 'success', msg: editingVacationId ? 'Periodo actualizado' : 'Periodo añadido' });
+                      setTimeout(() => setFeedback(null), 2000);
+                    }} className="flex-[2] bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-[0.98] transition-all">
+                      {editingVacationId ? 'Guardar Cambios' : 'Asignar Vacaciones'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <button
+                    onClick={async () => {
+                      if (window.confirm("¿Aplicar baja laboral (Soft Delete)? El usuario no podrá entrar pero sus datos se conservarán por motivos legales.")) {
+                        try {
+                          await dbService.softDeleteUser(selectedEmployee.id);
+                          setEmployees(employees.filter(e => e.id !== selectedEmployee.id));
+                          setSelectedEmployee(null);
+                          setFeedback({ type: 'success', msg: 'Usuario dado de baja' });
+                        } catch (e) {
+                          setFeedback({ type: 'error', msg: 'Error al dar de baja' });
+                        }
+                        setTimeout(() => setFeedback(null), 3000);
+                      }
+                    }}
+                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 py-4 rounded-3xl font-black text-[11px] uppercase tracking-widest transition-all"
+                  >
+                    Dar de Baja (Legal / Soft Delete)
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      if (window.confirm("¿ELIMINAR PERMANENTEMENTE? Esta acción borrará todos los fichajes, ausencias y la cuenta de acceso. No se puede deshacer.")) {
+                        try {
+                          await dbService.deleteUserCompletely(selectedEmployee.id);
+                          setEmployees(employees.filter(e => e.id !== selectedEmployee.id));
+                          setSelectedEmployee(null);
+                          setFeedback({ type: 'success', msg: 'Eliminado permanentemente' });
+                        } catch (e) {
+                          setFeedback({ type: 'error', msg: 'Error al eliminar completamente' });
+                        }
+                        setTimeout(() => setFeedback(null), 3000);
+                      }
+                    }}
+                    className="w-full bg-red-50 hover:bg-red-500 text-red-500 hover:text-white py-4 md:py-5 rounded-3xl font-black text-[11px] uppercase tracking-widest transition-all duration-300 border border-transparent hover:shadow-xl hover:shadow-red-500/20 active:scale-[0.98]"
+                  >
+                    Eliminar Todo (Hard Delete)
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {feedback && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[500] flex flex-col items-center pointer-events-none w-full max-w-xs px-6">
-          <div className={`
+      {
+        feedback && (
+          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[500] flex flex-col items-center pointer-events-none w-full max-w-xs px-6">
+            <div className={`
             px-8 py-4 rounded-3xl font-black text-[11px] uppercase tracking-widest shadow-2xl animate-in fade-in zoom-in slide-in-from-top-4 duration-500 backdrop-blur-md border flex items-center gap-3
             ${feedback.type === 'success' ? 'bg-slate-900/90 text-white border-white/10' : 'bg-red-600/90 text-white border-white/10'}
           `}>
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${feedback.type === 'success' ? 'bg-green-500' : 'bg-red-400'}`}>
-              <i className={feedback.type === 'success' ? 'fas fa-check' : 'fas fa-xmark'}></i>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${feedback.type === 'success' ? 'bg-green-500' : 'bg-red-400'}`}>
+                <i className={feedback.type === 'success' ? 'fas fa-check' : 'fas fa-xmark'}></i>
+              </div>
+              {feedback.msg}
             </div>
-            {feedback.msg}
           </div>
-        </div>
-      )}
+        )
+      }
       {showScanner && <Scanner onScan={handleQrScan} onCancel={() => setShowScanner(false)} />}
 
       {/* MODAL DE AUSENCIA */}
-      {showAbsenceModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 no-print">
-          <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-xl" onClick={() => setShowAbsenceModal(false)}></div>
-          <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-10 text-center">
-              <div className="w-20 h-20 bg-red-50 text-red-500 rounded-[2rem] flex items-center justify-center text-3xl mx-auto mb-8 shadow-inner">
-                <i className="fas fa-calendar-times"></i>
-              </div>
-              <h3 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">Marcar Ausencia</h3>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-10">¿No puedes asistir hoy?</p>
+      {
+        showAbsenceModal && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 no-print">
+            <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-xl" onClick={() => setShowAbsenceModal(false)}></div>
+            <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95 duration-300">
+              <div className="p-10 text-center">
+                <div className="w-20 h-20 bg-red-50 text-red-500 rounded-[2rem] flex items-center justify-center text-3xl mx-auto mb-8 shadow-inner">
+                  <i className="fas fa-calendar-times"></i>
+                </div>
+                <h3 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">Marcar Ausencia</h3>
+                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-10">¿No puedes asistir hoy?</p>
 
-              <div className="space-y-6 text-left">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Motivo de la Ausencia</label>
-                  <select
-                    value={absenceFormData.predefinedReason}
-                    onChange={(e) => setAbsenceFormData({ ...absenceFormData, predefinedReason: e.target.value })}
-                    className="w-full p-5 bg-slate-50 border-2 border-transparent rounded-2xl text-xs font-bold text-slate-700 outline-none focus:bg-white focus:border-red-600/20 transition-all appearance-none cursor-pointer"
-                  >
-                    <option>Baja médica</option>
-                    <option>Vacaciones</option>
-                    <option>Asunto personal</option>
-                    <option>Formación</option>
-                    <option>Permiso retribuido</option>
-                    <option>Permiso no retribuido</option>
-                    <option>Otro</option>
-                  </select>
+                <div className="space-y-6 text-left">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Motivo de la Ausencia</label>
+                    <select
+                      value={absenceFormData.predefinedReason}
+                      onChange={(e) => setAbsenceFormData({ ...absenceFormData, predefinedReason: e.target.value })}
+                      className="w-full p-5 bg-slate-50 border-2 border-transparent rounded-2xl text-xs font-bold text-slate-700 outline-none focus:bg-white focus:border-red-600/20 transition-all appearance-none cursor-pointer"
+                    >
+                      <option>Baja médica</option>
+                      <option>Vacaciones</option>
+                      <option>Asunto personal</option>
+                      <option>Formación</option>
+                      <option>Permiso retribuido</option>
+                      <option>Permiso no retribuido</option>
+                      <option>Otro</option>
+                    </select>
+                  </div>
+
+                  {absenceFormData.predefinedReason === 'Otro' && (
+                    <div className="space-y-2 animate-in slide-in-from-top-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Especifica el motivo</label>
+                      <input
+                        type="text"
+                        placeholder="Escribe aquí..."
+                        value={absenceFormData.customReason}
+                        onChange={(e) => setAbsenceFormData({ ...absenceFormData, customReason: e.target.value })}
+                        className="w-full p-5 bg-slate-50 border-2 border-transparent rounded-2xl text-xs font-bold text-slate-700 outline-none focus:bg-white focus:border-red-600/20 transition-all"
+                      />
+                    </div>
+                  )}
                 </div>
 
-                {absenceFormData.predefinedReason === 'Otro' && (
-                  <div className="space-y-2 animate-in slide-in-from-top-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Especifica el motivo</label>
-                    <input
-                      type="text"
-                      placeholder="Escribe aquí..."
-                      value={absenceFormData.customReason}
-                      onChange={(e) => setAbsenceFormData({ ...absenceFormData, customReason: e.target.value })}
-                      className="w-full p-5 bg-slate-50 border-2 border-transparent rounded-2xl text-xs font-bold text-slate-700 outline-none focus:bg-white focus:border-red-600/20 transition-all"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-4 mt-12">
-                <button
-                  onClick={() => setShowAbsenceModal(false)}
-                  className="flex-1 bg-slate-50 text-slate-400 py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all"
-                >
-                  Cancelar
-                </button>
-                <button
-                  disabled={absenceFormData.predefinedReason === 'Otro' && !absenceFormData.customReason}
-                  onClick={handleSaveAbsence}
-                  className="flex-[2] bg-slate-900 text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-95 transition-all disabled:opacity-50"
-                >
-                  Confirmar Ausencia
-                </button>
+                <div className="flex gap-4 mt-12">
+                  <button
+                    onClick={() => setShowAbsenceModal(false)}
+                    className="flex-1 bg-slate-50 text-slate-400 py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    disabled={absenceFormData.predefinedReason === 'Otro' && !absenceFormData.customReason}
+                    onClick={handleSaveAbsence}
+                    className="flex-[2] bg-slate-900 text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    Confirmar Ausencia
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 
