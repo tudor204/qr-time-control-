@@ -158,7 +158,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees, abse
                                     endDate || dateFilteredRecords[0]?.timestamp.split('T')[0],
                                     dateFilteredAbsences
                                 )}
-                                className="group relative overflow-hidden bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-95 transition-all"
+                                className="group relative overflow-hidden bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-95 transition-all interactive-button"
                             >
                                 <span className="relative z-10 flex items-center gap-2">
                                     <i className="fas fa-file-pdf text-xs text-red-400"></i>
@@ -177,7 +177,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees, abse
                             </div>
                         ) : (
                             combinedData.map((item: any, i) => (
-                                <div key={i} className={`group p-5 rounded-3xl flex items-center justify-between border-2 transition-all hover:shadow-xl hover:shadow-slate-200/40 ${item.isAbsence ? 'bg-red-50/50 border-red-100 hover:bg-white' : 'bg-slate-50/50 hover:bg-white border-transparent hover:border-blue-600/10'}`}>
+                                <div key={i} className={`group p-5 rounded-3xl flex items-center justify-between border-2 transition-all premium-card animate-list-item ${item.isAbsence ? 'bg-red-50/50 border-red-100' : 'bg-slate-50/50 hover:bg-white border-transparent hover:border-blue-600/10'}`} style={{ animationDelay: `${i * 0.05}s` }}>
                                     <div className="flex items-center gap-4">
                                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg ${item.isAbsence ? 'bg-red-100 text-red-500' : item.type === 'IN' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'}`}>
                                             <i className={`fas ${item.isAbsence ? 'fa-calendar-times' : item.type === 'IN' ? 'fa-sign-in-alt' : 'fa-sign-out-alt'}`}></i>
@@ -206,64 +206,66 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees, abse
                             ))
                         )}
                     </div>
-                </div>
+                </div >
             )}
 
             {/* Vista Mensual */}
-            {viewMode === 'monthly' && selectedEmployeeId !== 'all' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in zoom-in-95 duration-500">
-                    {monthlyStats.length === 0 ? (
-                        <div className="col-span-full py-20 bg-white rounded-[3rem] border border-dashed border-slate-200 flex flex-col items-center text-slate-300">
-                            <i className="fas fa-calendar-xmark text-5xl mb-4 opacity-20"></i>
-                            <p className="text-xs font-black uppercase tracking-[0.2em]">No hay historial para este empleado</p>
-                        </div>
-                    ) : (
-                        monthlyStats.map((month, i) => (
-                            <div key={i} className="group bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-blue-600/10 transition-all duration-500 hover:-translate-y-2 relative overflow-hidden">
-                                {/* Badge de Fondo Decorativo */}
-                                <div className="absolute top-0 right-0 p-8 text-blue-600/5 group-hover:scale-150 group-hover:text-blue-600/10 transition-all duration-700">
-                                    <i className="fas fa-chart-pie text-7xl"></i>
-                                </div>
-
-                                <div className="flex justify-between items-start mb-8 relative z-10">
-                                    <div>
-                                        <h4 className="text-2xl font-black text-slate-800 capitalize tracking-tighter">{month.monthName}</h4>
-                                        <p className="text-[11px] text-blue-600 font-black uppercase tracking-[0.2em]">{month.year}</p>
-                                    </div>
-                                    <button
-                                        onClick={() => generateMonthlyPDF(month, selectedEmployee?.name || 'Empleado')}
-                                        className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center hover:bg-blue-600 shadow-lg shadow-slate-900/10 hover:shadow-blue-600/20 transition-all duration-300"
-                                        title="Exportar PDF Mensual"
-                                    >
-                                        <i className="fas fa-file-export text-sm"></i>
-                                    </button>
-                                </div>
-
-                                <div className="space-y-4 relative z-10">
-                                    <div className="bg-slate-50 p-5 rounded-3xl group-hover:bg-blue-50/50 transition-colors">
-                                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1 group-hover:text-blue-400">Tiempo Total</p>
-                                        <div className="flex items-baseline gap-2">
-                                            <p className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-blue-700 transition-colors">{month.totalHours}</p>
-                                            <p className="text-xs font-bold text-slate-400">horas</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="bg-slate-50 p-4 rounded-3xl border border-transparent group-hover:border-blue-100 transition-all">
-                                            <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Días</p>
-                                            <p className="text-xl font-black text-slate-800">{month.daysWorked}</p>
-                                        </div>
-                                        <div className="bg-slate-50 p-4 rounded-3xl border border-transparent group-hover:border-blue-100 transition-all">
-                                            <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Media</p>
-                                            <p className="text-xl font-black text-slate-800">{month.avgHoursPerDay}h</p>
-                                        </div>
-                                    </div>
-                                </div>
+            {
+                viewMode === 'monthly' && selectedEmployeeId !== 'all' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in zoom-in-95 duration-500">
+                        {monthlyStats.length === 0 ? (
+                            <div className="col-span-full py-20 bg-white rounded-[3rem] border border-dashed border-slate-200 flex flex-col items-center text-slate-300">
+                                <i className="fas fa-calendar-xmark text-5xl mb-4 opacity-20"></i>
+                                <p className="text-xs font-black uppercase tracking-[0.2em]">No hay historial para este empleado</p>
                             </div>
-                        ))
-                    )}
-                </div>
-            )}
-        </div>
+                        ) : (
+                            monthlyStats.map((month, i) => (
+                                <div key={i} className="group bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-blue-600/10 transition-all duration-500 hover:-translate-y-2 relative overflow-hidden">
+                                    {/* Badge de Fondo Decorativo */}
+                                    <div className="absolute top-0 right-0 p-8 text-blue-600/5 group-hover:scale-150 group-hover:text-blue-600/10 transition-all duration-700">
+                                        <i className="fas fa-chart-pie text-7xl"></i>
+                                    </div>
+
+                                    <div className="flex justify-between items-start mb-8 relative z-10">
+                                        <div>
+                                            <h4 className="text-2xl font-black text-slate-800 capitalize tracking-tighter">{month.monthName}</h4>
+                                            <p className="text-[11px] text-blue-600 font-black uppercase tracking-[0.2em]">{month.year}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => generateMonthlyPDF(month, selectedEmployee?.name || 'Empleado')}
+                                            className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center hover:bg-blue-600 shadow-lg shadow-slate-900/10 hover:shadow-blue-600/20 transition-all duration-300"
+                                            title="Exportar PDF Mensual"
+                                        >
+                                            <i className="fas fa-file-export text-sm"></i>
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-4 relative z-10">
+                                        <div className="bg-slate-50 p-5 rounded-3xl group-hover:bg-blue-50/50 transition-colors">
+                                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1 group-hover:text-blue-400">Tiempo Total</p>
+                                            <div className="flex items-baseline gap-2">
+                                                <p className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-blue-700 transition-colors">{month.totalHours}</p>
+                                                <p className="text-xs font-bold text-slate-400">horas</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-slate-50 p-4 rounded-3xl border border-transparent group-hover:border-blue-100 transition-all">
+                                                <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Días</p>
+                                                <p className="text-xl font-black text-slate-800">{month.daysWorked}</p>
+                                            </div>
+                                            <div className="bg-slate-50 p-4 rounded-3xl border border-transparent group-hover:border-blue-100 transition-all">
+                                                <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Media</p>
+                                                <p className="text-xl font-black text-slate-800">{month.avgHoursPerDay}h</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )
+            }
+        </div >
     );
 };

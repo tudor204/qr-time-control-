@@ -8,11 +8,20 @@ export enum RecordType {
   OUT = 'OUT'
 }
 
+export interface Company {
+  id: string;
+  name: string;
+  taxId: string;
+  createdAt: string;
+  createdBy?: string;
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  companyId?: string;
   vacations?: { id: string; start: string; end: string }[];
   weeklyHours?: number;
   workingDaysPerWeek?: number;

@@ -44,7 +44,7 @@ export const WorkHistory: React.FC<WorkHistoryProps> = ({ user, records, absence
                 </div>
                 <button
                     onClick={onExportPDF}
-                    className="flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 active:scale-95"
+                    className="flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 active:scale-95 interactive-button"
                 >
                     <i className="fas fa-file-pdf"></i>
                     Exportar Informe
@@ -86,7 +86,7 @@ export const WorkHistory: React.FC<WorkHistoryProps> = ({ user, records, absence
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-6 mb-6">Detalle de Actividad Reciente</h3>
                 <div className="overflow-y-auto custom-scrollbar flex-1 space-y-4 pr-4">
                     {sortedDays.map((day: any, i) => (
-                        <div key={i} className={`group p-8 rounded-[3rem] border transition-all ${day.isAbsence ? 'bg-red-50/30 border-red-100' : 'bg-slate-50 border-transparent hover:border-blue-100'}`}>
+                        <div key={i} className={`group p-8 rounded-[3rem] border transition-all premium-card animate-list-item ${day.isAbsence ? 'bg-red-50/30 border-red-100' : 'bg-slate-50 border-transparent hover:border-blue-100'}`} style={{ animationDelay: `${i * 0.05}s` }}>
                             <div className="flex justify-between items-center mb-8">
                                 <div className="flex items-center gap-4">
                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm ${day.isAbsence ? 'bg-red-100 text-red-500' : 'bg-blue-50 text-blue-600'}`}>

@@ -36,5 +36,11 @@ service cloud.firestore {
     match /{path=**}/absences/{absenceId} {
       allow read: if isAdmin();
     }
+
+    // Reglas para la colección de empresas
+    match /companies/{companyId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
   }
 }

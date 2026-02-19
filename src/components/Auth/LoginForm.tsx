@@ -25,7 +25,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                     </div>
                 </div>
 
-                <div className="bg-white/80 backdrop-blur-xl p-8 md:p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(37,99,235,0.1)] border border-white/50 w-full animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
+                <div className="bg-white/80 backdrop-blur-xl p-8 md:p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(37,99,235,0.1)] border border-white/50 w-full animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out premium-card">
                     <div className="text-center mb-10">
                         <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">
                             {isRegistering ? 'Crear Perfil' : 'Panel de Acceso'}
@@ -89,7 +89,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                             </div>
                         </div>
 
-                        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/20 active:scale-[0.98] focus:ring-4 focus:ring-blue-600/20 transition-all duration-200">
+                        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/20 active:scale-[0.98] focus:ring-4 focus:ring-blue-600/20 transition-all duration-200 interactive-button">
                             {isRegistering ? 'Registrarme' : 'Entrar'}
                         </button>
                     </form>
@@ -101,7 +101,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
                     <button
                         onClick={onToggleRegister}
-                        className="w-full py-4 text-[11px] text-slate-500 font-bold uppercase tracking-widest hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"
+                        className="w-full py-4 text-[11px] text-slate-500 font-bold uppercase tracking-widest hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all interactive-button"
                     >
                         {isRegistering ? 'Ya tengo cuenta' : 'Crear nueva cuenta'}
                     </button>

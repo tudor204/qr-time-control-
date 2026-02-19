@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore';
 import { auth } from './firebaseConfig';
 import { deleteUser } from 'firebase/auth';
-import { User, AttendanceRecord, RecordType, Absence } from '../types';
+import { User, AttendanceRecord, RecordType, Absence, Company } from '../types';
 
 export const dbService = {
   // Guardar perfil de usuario
@@ -175,6 +175,78 @@ export const dbService = {
       await deleteDoc(doc(db, 'users', userId, 'absences', absenceId));
     } catch (error) {
       console.error("Error eliminando ausencia:", error);
+      throw error;
+    }
+  },
+
+  // GESTIÓN DE EMPRESAS
+  async getCompanies(): Promise<Company[]> {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'companies'));
+      return querySnapshot.docs.map(doc => ({
+        ...doc.data() as Company,
+        id: doc.id
+      }));
+    } catch (error) {
+      console.error("Error obteniendo empresas:", error);
+      return [];
+    }
+  },
+
+  async saveCompany(company: Company) {
+    try {
+      await setDoc(doc(db, 'companies', company.id), company);
+    } catch (error) {
+      console.error("Error guardando empresa:", error);
+      throw error;
+    }
+  },
+
+  async deleteCompany(companyId: string) {
+    try {
+      // Verificar si hay empleados asociados antes de eliminar
+      const employees = await this.getEmployees();
+      const hasEmployees = employees.some(emp => emp.companyId === companyId);
+
+      if (hasEmployees) {
+        throw new Error("No se puede eliminar una empresa que tiene trabajadores asociados.");
+      }
+
+      await deleteDoc(doc(db, 'companies', companyId));
+    } catch (error) {
+      console.error("Error eliminando empresa:", error);
+      throw error;
+    }
+  },
+
+  async getEmployeesByCompany(companyId: string): Promise<User[]> {
+    try {
+      const q = query(collection(db, 'users'), where('companyId', '==', companyId));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs
+        .map(doc => doc.data() as User)
+        .filter(user => user.isDeleted !== true);
+    } catch (error) {
+      console.error("Error obteniendo empleados por empresa:", error);
+      return [];
+    }
+  },
+
+  async migrateEmployeesToCompany(companyId: string) {
+    try {
+      const batch = writeBatch(db);
+      const employees = await this.getEmployees();
+
+      employees.forEach(emp => {
+        if (!emp.companyId) {
+          const userRef = doc(db, 'users', emp.id);
+          batch.update(userRef, { companyId });
+        }
+      });
+
+      await batch.commit();
+    } catch (error) {
+      console.error("Error en migración masiva:", error);
       throw error;
     }
   }

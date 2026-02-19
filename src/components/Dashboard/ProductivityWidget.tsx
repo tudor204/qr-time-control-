@@ -16,7 +16,7 @@ export const ProductivityWidget: React.FC<ProductivityWidgetProps> = ({ employee
     const isAbsentToday = currentStatus.label === 'Ausente';
 
     return (
-        <div className={`p-6 md:p-8 rounded-[2.5rem] shadow-sm border mb-6 relative overflow-hidden transition-all group ${stats.onVacation ? 'bg-orange-50 border-orange-200' : isAbsentToday ? 'bg-red-50 border-red-200' : 'bg-white border-slate-100 hover:shadow-xl hover:shadow-blue-600/5'}`}>
+        <div className={`p-6 md:p-8 rounded-[2.5rem] shadow-sm border mb-6 relative overflow-hidden transition-all group premium-card ${stats.onVacation ? 'bg-orange-50 border-orange-200' : isAbsentToday ? 'bg-red-50 border-red-200' : 'bg-white border-slate-100 hover:shadow-xl hover:shadow-blue-600/5'}`}>
             {/* Fondo Decorativo Sutil */}
             <div className={`absolute top-0 right-0 w-32 h-32 blur-3xl opacity-10 rounded-full -mr-16 -mt-16 transition-all duration-700 group-hover:scale-150 ${stats.onVacation ? 'bg-orange-500' : isAbsentToday ? 'bg-red-500' : 'bg-blue-600'}`}></div>
 
