@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { AttendanceRecord, User, Absence } from '../../types';
 import { filterRecordsByDateRange, calculateMonthlyStats, generateDetailedPDF, generateMonthlyPDF } from '../../utils/reportUtils';
-import { calculateDurationHours } from '../../utils/timeCalculations';
 
 interface ReportsTabProps {
     records: AttendanceRecord[];

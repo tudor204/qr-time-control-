@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, AttendanceRecord, Absence, RecordType } from '../../types';
+import { User, AttendanceRecord, Absence } from '../../types';
 import {
     calculateDurationHours,
     formatDuration,

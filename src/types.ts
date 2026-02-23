@@ -52,10 +52,3 @@ export interface AuthState {
   user: User | null;
   loading: boolean;
 }
-
-export interface AdminSettings {
-  primaryColor: string;
-  layoutDensity: 'compact' | 'spacious';
-  showSummary: boolean;
-}
-

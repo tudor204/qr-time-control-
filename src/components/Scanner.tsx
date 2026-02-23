@@ -42,11 +42,11 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onCancel }) => {
           }
         }
       )
-      .then((controls) => {
+      .then((_controls) => {
         // ZXing maneja el stream internamente, pero lo guardamos para limpieza manual si fuera necesario
         // @ts-ignore - Algunas versiones de ZXing no exponen el stream directamente en controls
         if (videoRef.current?.srcObject) {
-           streamRef.current = videoRef.current.srcObject as MediaStream;
+          streamRef.current = videoRef.current.srcObject as MediaStream;
         }
       })
       .catch((err) => {
@@ -66,7 +66,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onCancel }) => {
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-[100] p-6 animate-in fade-in duration-300">
-      
+
       <div className="absolute top-8 text-center z-20">
         <p className="text-blue-400 text-xs font-black uppercase tracking-widest mb-2">
           Escáner Universal
@@ -75,7 +75,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onCancel }) => {
       </div>
 
       <div className="relative w-full max-w-[320px] aspect-square rounded-3xl overflow-hidden mb-12 bg-gray-900 border-2 border-white/10 shadow-2xl">
-        
+
         {/* VIDEO REAL */}
         <video
           ref={videoRef}
@@ -90,7 +90,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onCancel }) => {
           <div className="absolute top-6 right-6 w-8 h-8 border-t-4 border-r-4 border-blue-500 rounded-tr"></div>
           <div className="absolute bottom-6 left-6 w-8 h-8 border-b-4 border-l-4 border-blue-500 rounded-bl"></div>
           <div className="absolute bottom-6 right-6 w-8 h-8 border-b-4 border-r-4 border-blue-500 rounded-br"></div>
-          
+
           {/* Línea de escaneo animada */}
           <div className="absolute inset-x-0 h-1 bg-blue-400 shadow-[0_0_15px_rgba(96,165,250,1)] animate-scan-line"></div>
         </div>
@@ -99,7 +99,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onCancel }) => {
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 text-white p-6 text-center z-30">
             <span className="text-3xl mb-4">⚠️</span>
             <p className="text-sm font-medium text-red-400">{error}</p>
-            <button 
+            <button
               onClick={() => window.location.reload()}
               className="mt-4 text-xs text-blue-400 underline"
             >

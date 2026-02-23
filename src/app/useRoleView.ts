@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { User, AttendanceRecord, Absence, RecordType } from '../types';
+import { User, AttendanceRecord, Absence } from '../types';
 
 export const useRoleView = (
     user: User | null,
