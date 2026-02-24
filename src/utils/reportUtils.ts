@@ -2,6 +2,41 @@ import { AttendanceRecord, Absence } from '../types';
 import { calculateDurationHours } from './timeCalculations';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+
+/**
+ * Función helper para guardar y compartir PDF en entorno móvil (Capacitor)
+ */
+const saveAndSharePDF = async (doc: jsPDF, filename: string) => {
+    const isCapacitor = (window as any).Capacitor?.isNativePlatform();
+
+    if (isCapacitor) {
+        try {
+            const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+            // Guardar en el directorio de documentos/caché
+            const savedFile = await Filesystem.writeFile({
+                path: filename,
+                data: pdfBase64,
+                directory: Directory.Cache
+            });
+
+            // Compartir el archivo guardado
+            await Share.share({
+                title: 'Exportar Reporte PDF',
+                text: 'Aquí tienes el reporte de asistencia solicitado.',
+                url: savedFile.uri,
+                dialogTitle: 'Abrir o Compartir Reporte'
+            });
+        } catch (error) {
+            console.error('Error procesando PDF en móvil:', error);
+            alert('No se pudo generar o compartir el PDF. Verifica los permisos.');
+        }
+    } else {
+        doc.save(filename);
+    }
+};
 
 /**
  * Filtra registros por rango de fechas
@@ -163,7 +198,7 @@ export const generateDetailedPDF = (
         theme: 'striped'
     });
 
-    doc.save(`Reporte_${employeeName.replace(/\s+/g, '_')}_${startDate}_${endDate}.pdf`);
+    saveAndSharePDF(doc, `Reporte_${employeeName.replace(/\s+/g, '_')}_${startDate}_${endDate}.pdf`);
 };
 
 /**
@@ -220,5 +255,5 @@ export const generateMonthlyPDF = (
         theme: 'striped'
     });
 
-    doc.save(`Resumen_${employeeName.replace(/\s+/g, '_')}_${monthStats.monthKey}.pdf`);
+    saveAndSharePDF(doc, `Resumen_${employeeName.replace(/\s+/g, '_')}_${monthStats.monthKey}.pdf`);
 };

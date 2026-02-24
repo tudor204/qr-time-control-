@@ -3,6 +3,7 @@ import { User, AttendanceRecord, Absence, Company, RecordType } from '../../type
 import { dbService } from '../../services/dbService';
 import { getEmployeeStatus } from '../../utils/employeeStatus';
 import { ReportsTab } from './ReportsTab';
+import { Share } from '@capacitor/share';
 
 declare const QRCode: any;
 
@@ -48,16 +49,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     useEffect(() => {
         if (activeTab === 'settings' && qrContainerRef.current) {
             qrContainerRef.current.innerHTML = '';
+            // Ajuste de tamaño para móviles (QR más pequeño para visibilidad total)
+            const isMobile = window.innerWidth < 640;
+            const size = isMobile ? 180 : 250;
+
             new QRCode(qrContainerRef.current, {
                 text: qrText,
-                width: 250,
-                height: 250,
+                width: size,
+                height: size,
                 colorDark: "#2563eb",
                 colorLight: "#ffffff",
                 correctLevel: QRCode.CorrectLevel.H
             });
         }
     }, [activeTab, qrText]);
+
+    const handlePrintQR = async () => {
+        const isCapacitor = (window as any).Capacitor?.isNativePlatform();
+
+        if (isCapacitor) {
+            try {
+                // Capturar el QR como imagen (está en un canvas dentro del ref)
+                const canvas = qrContainerRef.current?.querySelector('canvas');
+                if (!canvas) throw new Error('QR no encontrado');
+
+                const base64Data = canvas.toDataURL('image/png');
+
+                await Share.share({
+                    title: 'Código QR de Acceso',
+                    text: 'Usa este código QR para el control horario.',
+                    url: base64Data,
+                    dialogTitle: 'Compartir o Imprimir QR'
+                });
+            } catch (error) {
+                console.error('Error compartiendo QR:', error);
+                showFeedback('Error al compartir el código QR', 'error');
+            }
+        } else {
+            window.print();
+        }
+    };
 
     return (
         <div className="space-y-8">
@@ -287,23 +318,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
             {/* Tab: Ajustes (QR) */}
             {activeTab === 'settings' && (
-                <div className="bg-white p-10 md:p-16 rounded-[3.5rem] text-center border border-slate-100 max-w-lg mx-auto shadow-2xl shadow-slate-200/50 animate-in zoom-in-95 duration-500">
+                <div className="bg-white p-8 sm:p-10 md:p-16 rounded-[2.5rem] sm:rounded-[3.5rem] text-center border border-slate-100 max-w-lg mx-auto shadow-2xl shadow-slate-200/50 animate-in zoom-in-95 duration-500 no-print">
                     <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-[1.5rem] flex items-center justify-center text-2xl mx-auto mb-8">
                         <i className="fas fa-qrcode"></i>
                     </div>
                     <h3 className="font-black text-slate-900 mb-2 uppercase tracking-tight text-xl">Punto de Acceso Oficial</h3>
                     <p className="text-slate-400 text-xs font-medium mb-10 max-w-xs mx-auto">Coloca este código en un lugar visible para que los empleados puedan fichar.</p>
 
-                    <div className="flex justify-center p-8 bg-slate-50 rounded-[2.5rem] mb-10 shadow-inner group relative">
-                        <div ref={qrContainerRef} className="rounded-2xl overflow-hidden bg-white p-4 shadow-xl shadow-blue-600/5 transition-transform group-hover:scale-105 duration-500"></div>
+                    <div className="flex justify-center p-6 sm:p-8 bg-slate-50 rounded-[2rem] sm:rounded-[2.5rem] mb-10 shadow-inner group relative">
+                        <div ref={qrContainerRef} className="rounded-2xl overflow-hidden bg-white p-3 sm:p-4 shadow-xl shadow-blue-600/5 transition-transform group-hover:scale-105 duration-500 qr-print-area"></div>
                     </div>
 
                     <button
-                        onClick={() => window.print()}
+                        onClick={handlePrintQR}
                         className="w-full bg-slate-900 hover:bg-slate-800 text-white px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-slate-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                     >
                         <i className="fas fa-print"></i>
-                        Imprimir Código QR
+                        {(window as any).Capacitor?.isNativePlatform() ? 'Compartir / Imprimir QR' : 'Imprimir Código QR'}
                     </button>
                 </div>
             )}
