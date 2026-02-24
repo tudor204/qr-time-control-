@@ -9,6 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0",
     "@zxing/browser": "^0.1.5",
     "date-fns": "^4.1.0",
     "firebase": "^12.8.0",

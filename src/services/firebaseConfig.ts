@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { getAuth, indexedDBLocalPersistence, initializeAuth } from "firebase/auth";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 
 // Configuración segura cargada desde .env
@@ -31,4 +31,8 @@ if (typeof window !== 'undefined' && import.meta.env.VITE_RECAPTCHA_SITE_KEY) {
 }
 
 export const db = getFirestore(app);
-export const auth = getAuth(app);
+
+// Inicialización de Auth con persistencia específica para entornos móviles si es necesario
+export const auth = (typeof window !== 'undefined' && (window as any).Capacitor)
+  ? initializeAuth(app, { persistence: indexedDBLocalPersistence })
+  : getAuth(app);
