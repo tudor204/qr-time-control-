@@ -37,14 +37,14 @@ export const WorkHistory: React.FC<WorkHistoryProps> = ({ user, records, absence
     return (
         <div className="h-full flex flex-col gap-6 animate-in fade-in duration-500">
             {/* Header de Sección con Exportación */}
-            <div className="flex justify-between items-center bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm shrink-0">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm shrink-0">
                 <div>
                     <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Mi Historial Laboral</h2>
                     <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">Resumen de actividad y tiempo</p>
                 </div>
                 <button
                     onClick={onExportPDF}
-                    className="flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 active:scale-95 interactive-button"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-4 sm:py-3 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 active:scale-95 interactive-button"
                 >
                     <i className="fas fa-file-pdf"></i>
                     Exportar Informe
@@ -52,7 +52,7 @@ export const WorkHistory: React.FC<WorkHistoryProps> = ({ user, records, absence
             </div>
 
             {/* Grid de Estadísticas Compacto */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 shrink-0">
                 {/* Horas Semanales */}
                 <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 relative z-10">Esta Semana</p>
@@ -72,7 +72,7 @@ export const WorkHistory: React.FC<WorkHistoryProps> = ({ user, records, absence
                 </div>
 
                 {/* Vacaciones */}
-                <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+                <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group sm:col-span-2 md:col-span-1">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 relative z-10">Vacaciones {new Date().getFullYear()}</p>
                     <div className="flex items-baseline gap-2 relative z-10">
                         <span className="text-3xl font-black text-slate-900">{vacationSummary.consumed}</span>
@@ -84,22 +84,22 @@ export const WorkHistory: React.FC<WorkHistoryProps> = ({ user, records, absence
             {/* Listado de Días */}
             <div className="flex-1 min-h-0 flex flex-col bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-6 mb-6">Detalle de Actividad Reciente</h3>
-                <div className="overflow-y-auto custom-scrollbar flex-1 space-y-4 pr-4">
+                <div className="overflow-y-auto custom-scrollbar flex-1 space-y-4 pr-0 sm:pr-4">
                     {sortedDays.map((day: any, i) => (
-                        <div key={i} className={`group p-8 rounded-[3rem] border transition-all premium-card animate-list-item ${day.isAbsence ? 'bg-red-50/30 border-red-100' : 'bg-slate-50 border-transparent hover:border-blue-100'}`} style={{ animationDelay: `${i * 0.05}s` }}>
-                            <div className="flex justify-between items-center mb-8">
+                        <div key={i} className={`group p-6 sm:p-8 rounded-[2.5rem] sm:rounded-[3rem] border transition-all premium-card animate-list-item ${day.isAbsence ? 'bg-red-50/30 border-red-100' : 'bg-slate-50 border-transparent hover:border-blue-100'}`} style={{ animationDelay: `${i * 0.05}s` }}>
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm ${day.isAbsence ? 'bg-red-100 text-red-500' : 'bg-blue-50 text-blue-600'}`}>
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm shrink-0 ${day.isAbsence ? 'bg-red-100 text-red-500' : 'bg-blue-50 text-blue-600'}`}>
                                         <i className={`fas ${day.isAbsence ? 'fa-calendar-times' : 'fa-calendar-day'}`}></i>
                                     </div>
-                                    <span className="text-base font-black text-slate-800 uppercase tracking-tight">
-                                        {new Date(day.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}
+                                    <span className="text-sm sm:text-base font-black text-slate-800 uppercase tracking-tight">
+                                        {new Date(day.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
                                     </span>
                                 </div>
                                 {day.isAbsence ? (
-                                    <span className="text-[10px] font-black bg-red-500 text-white px-5 py-2 rounded-full shadow-lg shadow-red-900/10 uppercase tracking-wider">AUSENTE</span>
+                                    <span className="w-full sm:w-auto text-center text-[10px] font-black bg-red-500 text-white px-5 py-2 rounded-full shadow-lg shadow-red-900/10 uppercase tracking-wider">AUSENTE</span>
                                 ) : (
-                                    <span className="text-[11px] font-black bg-slate-900 text-white px-5 py-2 rounded-full shadow-lg shadow-slate-900/10 uppercase tracking-wider">
+                                    <span className="w-full sm:w-auto text-center text-[10px] sm:text-[11px] font-black bg-slate-900 text-white px-5 py-2 rounded-full shadow-lg shadow-slate-900/10 uppercase tracking-wider">
                                         {formatDuration(calculateDurationHours(day.in, day.out))}
                                     </span>
                                 )}
@@ -113,22 +113,22 @@ export const WorkHistory: React.FC<WorkHistoryProps> = ({ user, records, absence
                                     </p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="bg-white p-5 rounded-2xl border border-transparent transition-colors group-hover:bg-green-50/50 group-hover:border-green-100 shadow-sm">
-                                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                                    <div className="bg-white p-4 sm:p-5 rounded-2xl border border-transparent transition-colors group-hover:bg-green-50/50 group-hover:border-green-100 shadow-sm">
+                                        <p className="text-[9px] sm:text-[10px] text-slate-400 font-black uppercase tracking-widest mb-2 flex items-center gap-2">
                                             <i className="fas fa-arrow-right-to-bracket text-green-500"></i>
-                                            Entrada
+                                            In
                                         </p>
-                                        <p className="font-black text-slate-700 text-xl tracking-tight">
+                                        <p className="font-black text-slate-700 text-lg sm:text-xl tracking-tight">
                                             {day.in ? new Date(day.in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                                         </p>
                                     </div>
-                                    <div className="bg-white p-5 rounded-2xl border border-transparent transition-colors group-hover:bg-red-50/50 group-hover:border-red-100 shadow-sm">
-                                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    <div className="bg-white p-4 sm:p-5 rounded-2xl border border-transparent transition-colors group-hover:bg-red-50/50 group-hover:border-red-100 shadow-sm">
+                                        <p className="text-[9px] sm:text-[10px] text-slate-400 font-black uppercase tracking-widest mb-2 flex items-center gap-2">
                                             <i className="fas fa-arrow-right-from-bracket text-red-500"></i>
-                                            Salida
+                                            Out
                                         </p>
-                                        <p className="font-black text-slate-700 text-xl tracking-tight">
+                                        <p className="font-black text-slate-700 text-lg sm:text-xl tracking-tight">
                                             {day.out ? new Date(day.out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                                         </p>
                                     </div>

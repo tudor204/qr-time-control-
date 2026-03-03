@@ -24,6 +24,7 @@ interface AdminDashboardProps {
     openNewCompanyModal: () => void;
     openEditCompanyModal: (company: Company) => void;
     loadData: (user: User) => void;
+    onShowDeletedEmployeesChange?: (show: boolean) => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -42,9 +43,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setCompanies,
     openNewCompanyModal,
     openEditCompanyModal,
-    loadData
+    loadData,
+    onShowDeletedEmployeesChange
 }) => {
     const qrContainerRef = useRef<HTMLDivElement>(null);
+    const [showDeletedEmployees, setShowDeletedEmployeesState] = React.useState(false);
+
+    const setShowDeletedEmployees = (value: boolean) => {
+        setShowDeletedEmployeesState(value);
+        if (onShowDeletedEmployeesChange) {
+            onShowDeletedEmployeesChange(value);
+        }
+    };
 
     useEffect(() => {
         if (activeTab === 'settings' && qrContainerRef.current) {
@@ -93,12 +103,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     return (
         <div className="space-y-8">
             {/* Tab Bar */}
-            <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 flex gap-1 overflow-x-auto custom-scrollbar no-scrollbar no-print">
+            <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 flex gap-1 overflow-x-auto custom-scrollbar no-scrollbar no-print sticky top-0 z-10">
                 {(['companies', 'employees', 'history', 'reports', 'settings'] as const).map(tab => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab as any)}
-                        className={`flex-1 min-w-[100px] py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300 interactive-button ${activeTab === tab
+                        className={`flex-1 min-w-[110px] sm:min-w-0 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300 interactive-button ${activeTab === tab
                             ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/10'
                             : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
                             }`}
@@ -118,14 +128,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {/* Tab: Empresas */}
             {activeTab === 'companies' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
                         <div>
                             <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Gestión de Empresas</h3>
                             <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">Control multiempresa activo</p>
                         </div>
                         <button
                             onClick={openNewCompanyModal}
-                            className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center gap-2 interactive-button"
+                            className="w-full sm:w-auto bg-blue-600 text-white px-6 py-4 sm:py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 interactive-button"
                         >
                             <i className="fas fa-plus"></i>
                             Nueva Empresa
@@ -145,10 +155,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{company.taxId}</p>
                                         </div>
                                     </div>
-                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
                                             onClick={() => openEditCompanyModal(company)}
-                                            className="w-10 h-10 bg-slate-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center"
+                                            className="w-11 h-11 sm:w-10 sm:h-10 bg-slate-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center"
                                         >
                                             <i className="fas fa-pen text-xs"></i>
                                         </button>
@@ -164,7 +174,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                     }
                                                 }
                                             }}
-                                            className="w-10 h-10 bg-slate-50 text-orange-500 rounded-xl hover:bg-orange-500 hover:text-white transition-all flex items-center justify-center interactive-button"
+                                            className="w-11 h-11 sm:w-10 sm:h-10 bg-slate-50 text-orange-500 rounded-xl hover:bg-orange-500 hover:text-white transition-all flex items-center justify-center interactive-button"
                                             title="Migrar empleados sin empresa aquí"
                                         >
                                             <i className="fas fa-file-import text-xs"></i>
@@ -181,7 +191,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                     }
                                                 }
                                             }}
-                                            className="w-10 h-10 bg-slate-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center"
+                                            className="w-11 h-11 sm:w-10 sm:h-10 bg-slate-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center"
                                         >
                                             <i className="fas fa-trash-alt text-xs"></i>
                                         </button>
@@ -258,9 +268,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </button>
                         </div>
                     )}
+                    {/* Botón para mostrar empleados eliminados */}
+                    {employees.some(e => e.isDeleted) && (
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => setShowDeletedEmployees(!showDeletedEmployees)}
+                                className="bg-red-100 text-red-700 font-black px-6 py-2 rounded-2xl text-xs uppercase tracking-widest shadow transition-all hover:bg-red-200"
+                            >
+                                {showDeletedEmployees ? 'Ocultar eliminados' : 'Mostrar eliminados'}
+                            </button>
+                        </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {employees
                             .filter(emp => !selectedCompanyId || emp.companyId === selectedCompanyId)
+                            .filter(emp => showDeletedEmployees ? emp.isDeleted : !emp.isDeleted)
                             .map((emp, index) => {
                                 const status = getEmployeeStatus(emp, records, absences);
                                 return (

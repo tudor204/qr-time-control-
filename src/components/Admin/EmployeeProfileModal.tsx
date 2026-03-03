@@ -21,6 +21,8 @@ interface EmployeeProfileModalProps {
     setSelectedEmployee: (emp: User | null) => void;
     setVacationDate: (date: { start: string; end: string }) => void;
     setEditingVacationId: (id: string | null) => void;
+    setShowDeletedEmployees?: (show: boolean) => void;
+    onReactivateSuccess?: () => void;
     onClose: () => void;
 }
 
@@ -37,8 +39,35 @@ export const EmployeeProfileModal: React.FC<EmployeeProfileModalProps> = ({
     setSelectedEmployee,
     setVacationDate,
     setEditingVacationId,
+    setShowDeletedEmployees,
+    onReactivateSuccess,
     onClose
 }) => {
+    // Reactivar empleado
+    const handleReactivate = async () => {
+        if (!window.confirm('¿Seguro que quieres reactivar este empleado?')) return;
+        try {
+            await dbService.reactivateUser(employee.id);
+            showFeedback('Empleado reactivado', 'success');
+            const updatedEmployees = employees.map(e => e.id === employee.id ? { ...employee, isDeleted: false, deletedAt: undefined } : e);
+            setEmployees(updatedEmployees);
+            
+            // Si no hay más empleados eliminados, ocultar automáticamente la vista de eliminados
+            const hasDeletedEmployees = updatedEmployees.some(e => e.isDeleted);
+            if (!hasDeletedEmployees && setShowDeletedEmployees) {
+                setShowDeletedEmployees(false);
+            }
+            
+            // Llamar callback para que AdminDashboard refresque
+            if (onReactivateSuccess) {
+                onReactivateSuccess();
+            }
+            
+            setSelectedEmployee(null);
+        } catch (e: any) {
+            showFeedback(e.message || 'Error al reactivar', 'error');
+        }
+    };
     const handleGeneratePDF = () => {
         const doc = new jsPDF();
         doc.setFontSize(20);
@@ -65,7 +94,8 @@ export const EmployeeProfileModal: React.FC<EmployeeProfileModalProps> = ({
 
     const updateEmployee = async (updatedUser: User) => {
         try {
-            await dbService.saveUserProfile(updatedUser);
+            const { id, ...profileData } = updatedUser;
+            await dbService.saveUserProfile(id, profileData);
             setEmployees(employees.map(emp => emp.id === updatedUser.id ? updatedUser : emp));
             setSelectedEmployee(updatedUser);
         } catch (e) {
@@ -74,31 +104,56 @@ export const EmployeeProfileModal: React.FC<EmployeeProfileModalProps> = ({
         }
     };
 
+    // Eliminar empleado (Soft y Hard)
+    const handleSoftDelete = async () => {
+        if (!window.confirm('¿Seguro que quieres desactivar (soft delete) este empleado?')) return;
+        try {
+            await dbService.softDeleteUser(employee.id);
+            showFeedback('Empleado desactivado', 'success');
+            // Marcar como eliminado en lugar de filtrar, para que aparezca el botón de mostrar eliminados
+            setEmployees(employees.map(e => e.id === employee.id ? { ...e, isDeleted: true, deletedAt: new Date().toISOString() } : e));
+            setSelectedEmployee(null);
+        } catch (e: any) {
+            showFeedback(e.message || 'Error al desactivar', 'error');
+        }
+    };
+    const handleHardDelete = async () => {
+        if (!window.confirm('¿Seguro que quieres eliminar PERMANENTEMENTE este empleado? Esta acción es irreversible.')) return;
+        try {
+            await dbService.deleteUserCompletely(employee.id);
+            showFeedback('Empleado eliminado permanentemente', 'success');
+            setEmployees(employees.filter(e => e.id !== employee.id));
+            setSelectedEmployee(null);
+        } catch (e: any) {
+            showFeedback(e.message || 'Error al eliminar', 'error');
+        }
+    };
+
     return (
-        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 no-print">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 no-print">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose}></div>
-            <div className="bg-slate-50 w-full max-w-2xl rounded-t-[3rem] md:rounded-[3.5rem] shadow-[0_30px_90px_rgba(0,0,0,0.3)] relative z-10 overflow-hidden flex flex-col max-h-[92vh] animate-modal-in">
+            <div className="bg-slate-50 w-full max-w-2xl rounded-t-[2.5rem] sm:rounded-[3.5rem] shadow-[0_30px_90px_rgba(0,0,0,0.3)] relative z-10 overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[92vh] animate-modal-in">
                 {/* Header */}
-                <div className="p-8 md:p-10 bg-white border-b border-slate-100 flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-xl shadow-xl shadow-blue-600/20">
+                <div className="p-6 sm:p-10 bg-white border-b border-slate-100 flex justify-between items-center">
+                    <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-xl shadow-xl shadow-blue-600/20 shrink-0">
                             <i className="fas fa-user-tie"></i>
                         </div>
-                        <div>
-                            <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">{employee.name}</h3>
-                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mt-1">Perfil del Trabajador</p>
+                        <div className="min-w-0">
+                            <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase truncate">{employee.name}</h3>
+                            <p className="text-[9px] sm:text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mt-0.5 sm:mt-1">Perfil Trabajador</p>
                         </div>
                     </div>
                     <div className="flex gap-2">
                         <button
                             onClick={handleGeneratePDF}
-                            className="bg-slate-900 text-white w-12 h-12 flex items-center justify-center rounded-2xl hover:bg-slate-800 transition-all"
+                            className="bg-slate-900 text-white w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-xl sm:rounded-2xl hover:bg-slate-800 transition-all shrink-0"
                         >
                             <i className="fas fa-file-pdf"></i>
                         </button>
                         <button
                             onClick={onClose}
-                            className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white border border-slate-100 text-slate-400 hover:text-red-500 transition-all"
+                            className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-xl sm:rounded-2xl bg-white border border-slate-100 text-slate-400 hover:text-red-500 transition-all shrink-0"
                         >
                             <i className="fas fa-times"></i>
                         </button>
@@ -106,7 +161,33 @@ export const EmployeeProfileModal: React.FC<EmployeeProfileModalProps> = ({
                 </div>
 
                 {/* Body */}
-                <div className="p-8 md:p-10 overflow-y-auto bg-slate-50 space-y-8 custom-scrollbar">
+                <div className="p-6 sm:p-10 overflow-y-auto bg-slate-50 space-y-6 sm:space-y-8 custom-scrollbar">
+                    {/* Botones de eliminación y reactivación */}
+                    {employee.role !== 'ADMIN' && (
+                        <div className="flex gap-4 mb-6">
+                            {employee.isDeleted ? (
+                                <button
+                                    onClick={handleReactivate}
+                                    className="bg-green-600 hover:bg-green-700 text-white font-black px-6 py-3 rounded-2xl text-xs uppercase tracking-widest shadow-md transition-all"
+                                >
+                                    Reactivar Empleado
+                                </button>
+                            ) : (<>
+                                <button
+                                    onClick={handleSoftDelete}
+                                    className="bg-yellow-400 hover:bg-yellow-500 text-white font-black px-6 py-3 rounded-2xl text-xs uppercase tracking-widest shadow-md transition-all"
+                                >
+                                    Desactivar (Soft Delete)
+                                </button>
+                                <button
+                                    onClick={handleHardDelete}
+                                    className="bg-red-600 hover:bg-red-700 text-white font-black px-6 py-3 rounded-2xl text-xs uppercase tracking-widest shadow-md transition-all"
+                                >
+                                    Eliminar Permanente (Hard Delete)
+                                </button>
+                            </>)}
+                        </div>
+                    )}
                     <ProductivityWidget employee={employee} title="Productividad" records={records} absences={absences} />
 
                     {/* Selector de Empresa */}
@@ -226,7 +307,7 @@ export const EmployeeProfileModal: React.FC<EmployeeProfileModalProps> = ({
                                         showFeedback(editingVacationId ? 'Período actualizado' : 'Período añadido');
                                     } catch (e) { showFeedback('Error al guardar', 'error'); }
                                 }}
-                                className="w-full mt-6 bg-blue-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all"
+                                className="w-full mt-6 bg-blue-600 text-white py-4 sm:py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-[0.98] interactive-button"
                             >
                                 {editingVacationId ? 'Actualizar Período' : 'Añadir Vacaciones'}
                             </button>

@@ -19,11 +19,11 @@ export const AbsenceModal: React.FC<AbsenceModalProps> = ({
     onClose
 }) => {
     return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 no-print">
+        <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-6 no-print">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose}></div>
-            <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl relative z-10 p-8 md:p-10 animate-modal-in">
-                <div className="flex items-center gap-4 mb-8">
-                    <div className="w-12 h-12 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center text-xl">
+            <div className="bg-white w-full max-w-md rounded-t-[2.5rem] sm:rounded-[3rem] shadow-2xl relative z-10 p-6 sm:p-10 animate-modal-in max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center gap-4 mb-6 sm:mb-8">
+                    <div className="w-12 h-12 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center text-xl shrink-0">
                         <i className="fas fa-calendar-times"></i>
                     </div>
                     <div>
@@ -70,18 +70,18 @@ export const AbsenceModal: React.FC<AbsenceModalProps> = ({
                         </div>
                     )}
 
-                    <div className="flex gap-3 pt-4">
-                        <button
-                            onClick={onClose}
-                            className="flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all"
-                        >
-                            Cancelar
-                        </button>
+                    <div className="flex flex-col sm:flex-row gap-3 pt-4">
                         <button
                             onClick={onSave}
-                            className="flex-2 bg-slate-900 text-white py-4 px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all active:scale-95"
+                            className="w-full sm:flex-2 bg-slate-900 text-white py-4 px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all active:scale-95 order-1 sm:order-2 interactive-button"
                         >
                             Confirmar Ausencia
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="w-full sm:flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-all order-2 sm:order-1"
+                        >
+                            Cancelar
                         </button>
                     </div>
                 </div>

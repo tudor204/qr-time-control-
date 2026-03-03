@@ -11,31 +11,34 @@ import {
   orderBy,
   deleteDoc,
   collectionGroup,
-  writeBatch
+  writeBatch,
+  serverTimestamp,
+  deleteField
 } from 'firebase/firestore';
 import { auth } from './firebaseConfig';
 import { deleteUser } from 'firebase/auth';
 import { User, AttendanceRecord, RecordType, Absence, Company } from '../types';
 
 export const dbService = {
-  // Guardar perfil de usuario
-  async saveUserProfile(user: User) {
-    await setDoc(doc(db, 'users', user.id), user);
-  },
-
-  // Obtener perfil de usuario
-  async getUserProfile(uid: string): Promise<User | null> {
-    const docSnap = await getDoc(doc(db, 'users', uid));
-    return docSnap.exists() ? (docSnap.data() as User) : null;
-  },
-
-  // OBTENER TODOS LOS EMPLEADOS (Para el Admin) - Excluimos eliminados
-  // Nota: Filtramos en JS porque Firestore '!=' excluye documentos donde el campo no existe.
-  async getEmployees(): Promise<User[]> {
-    const querySnapshot = await getDocs(collection(db, 'users'));
-    return querySnapshot.docs
-      .map(doc => doc.data() as User)
-      .filter(user => user.isDeleted !== true);
+    // Obtener perfil de usuario
+    async getUserProfile(uid: string): Promise<User | null> {
+      const docSnap = await getDoc(doc(db, 'users', uid));
+      return docSnap.exists() ? (docSnap.data() as User) : null;
+    },
+  // REACTIVAR USUARIO (Quitar soft delete)
+  async reactivateUser(userId: string) {
+    try {
+      const userRef = doc(db, 'users', userId);
+      await setDoc(userRef, {
+        isDeleted: false,
+        deletedAt: deleteField()
+      }, { merge: true });
+      // Auditoría
+      console.info(`[AUDITORÍA] Usuario reactivado: ${userId}`);
+    } catch (error) {
+      console.error("Error en reactivateUser:", error);
+      throw error;
+    }
   },
 
   // AGREGAR REGISTRO DE ASISTENCIA (Jerárquico)
@@ -83,6 +86,15 @@ export const dbService = {
   // ELIMINACIÓN FÍSICA (Hard Delete) - Solicidatado por el usuario
   async deleteUserCompletely(userId: string) {
     try {
+      // 0. Verificar que NO sea ADMIN
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (!userDoc.exists()) throw new Error('Usuario no encontrado');
+      const userData = userDoc.data() as User;
+      if (userData.role === 'ADMIN') {
+        console.warn(`[AUDITORÍA] Intento de hard delete sobre ADMIN (${userId}) bloqueado.`);
+        throw new Error('No se puede eliminar un usuario ADMIN');
+      }
+
       const batch = writeBatch(db);
 
       // 1. Obtener y eliminar registros de asistencia
@@ -93,13 +105,18 @@ export const dbService = {
       const absencesSnapshot = await getDocs(collection(db, 'users', userId, 'absences'));
       absencesSnapshot.forEach((doc) => batch.delete(doc.ref));
 
+      // ADVERTENCIA: Si se agregan nuevas subcolecciones bajo users/{userId}, deben eliminarse aquí manualmente.
+
       // 3. Eliminar el documento del usuario
       batch.delete(doc(db, 'users', userId));
 
       // 4. Ejecutar el batch en Firestore
       await batch.commit();
 
-      // 5. Eliminar de Firebase Authentication
+      // 5. Auditoría
+      console.info(`[AUDITORÍA] Hard delete ejecutado para usuario ${userId} (${userData.name}, ${userData.email})`);
+
+      // 6. Eliminar de Firebase Authentication
       // Nota: Esto requiere que el usuario esté autenticado recientemente.
       // Si falla, el usuario de Firestore ya no existe, pero el de Auth sí.
       // En un entorno de producción real, esto se haría mejor con Firebase Admin SDK en una Cloud Function.
@@ -119,11 +136,21 @@ export const dbService = {
   // ELIMINACIÓN LÓGICA (Soft Delete) - Recomendado para cumplimiento legal
   async softDeleteUser(userId: string) {
     try {
+      // 0. Verificar que NO sea ADMIN
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (!userDoc.exists()) throw new Error('Usuario no encontrado');
+      const userData = userDoc.data() as User;
+      if (userData.role === 'ADMIN') {
+        console.warn(`[AUDITORÍA] Intento de soft delete sobre ADMIN (${userId}) bloqueado.`);
+        throw new Error('No se puede eliminar un usuario ADMIN');
+      }
       const userRef = doc(db, 'users', userId);
       await setDoc(userRef, {
         isDeleted: true,
-        deletedAt: new Date().toISOString()
+        deletedAt: serverTimestamp()
       }, { merge: true });
+      // Auditoría
+      console.info(`[AUDITORÍA] Soft delete ejecutado para usuario ${userId} (${userData.name}, ${userData.email})`);
     } catch (error) {
       console.error("Error en softDeleteUser:", error);
       throw error;
@@ -219,13 +246,23 @@ export const dbService = {
     }
   },
 
+  async getEmployees(): Promise<User[]> {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'users'));
+      return querySnapshot.docs
+        .map(doc => ({ ...doc.data() as User, id: doc.id }));
+    } catch (error) {
+      console.error("Error obteniendo empleados:", error);
+      return [];
+    }
+  },
+
   async getEmployeesByCompany(companyId: string): Promise<User[]> {
     try {
       const q = query(collection(db, 'users'), where('companyId', '==', companyId));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs
-        .map(doc => doc.data() as User)
-        .filter(user => user.isDeleted !== true);
+        .map(doc => doc.data() as User);
     } catch (error) {
       console.error("Error obteniendo empleados por empresa:", error);
       return [];
@@ -249,6 +286,17 @@ export const dbService = {
       console.error("Error en migración masiva:", error);
       throw error;
     }
+  },
+
+  /**
+   * Actualiza el perfil de un usuario en Firestore.
+   * @param userId ID del usuario a actualizar
+   * @param profileData Datos a guardar (parcial del perfil)
+   * @returns Promise<void>
+   */
+  async saveUserProfile(userId: string, profileData: Partial<User>): Promise<void> {
+    const userRef = doc(db, 'users', userId);
+    await setDoc(userRef, profileData, { merge: true });
   }
 
 };

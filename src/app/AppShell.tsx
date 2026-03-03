@@ -70,6 +70,9 @@ export const AppShell: React.FC = () => {
     getDayStatusText
   } = useRoleView(user, records, absences);
 
+  // Estado para mostrar/ocultar empleados eliminados
+  const [, setShowDeletedEmployees] = React.useState(false);
+
   useEffect(() => {
     if (user) {
       loadData(user);
@@ -200,6 +203,7 @@ export const AppShell: React.FC = () => {
             openNewCompanyModal={openNewCompanyModal}
             openEditCompanyModal={openEditCompanyModal}
             loadData={loadData}
+            onShowDeletedEmployeesChange={setShowDeletedEmployees}
           />
         ) : (
           <EmployeeDashboard
@@ -230,6 +234,8 @@ export const AppShell: React.FC = () => {
           setSelectedEmployee={setSelectedEmployee}
           setVacationDate={setVacationDate}
           setEditingVacationId={setEditingVacationId}
+          setShowDeletedEmployees={setShowDeletedEmployees}
+          onReactivateSuccess={() => loadData(user)}
           onClose={closeEmployeeModal}
         />
       )}

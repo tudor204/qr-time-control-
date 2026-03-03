@@ -58,19 +58,19 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
 
     return (
         <>
-            <div className="max-w-6xl mx-auto h-[calc(100vh-140px)] flex flex-col gap-6">
+            <div className="max-w-6xl mx-auto h-auto lg:h-[calc(100vh-140px)] flex flex-col gap-6 pb-32 lg:pb-0">
                 {/* Tab Selector */}
-                <div className="flex justify-between items-center no-print">
-                    <div className="flex gap-4">
+                <div className="flex justify-between items-center no-print px-1">
+                    <div className="flex gap-2 sm:gap-4 w-full sm:w-auto">
                         <button
                             onClick={() => setEmployeeTab('today')}
-                            className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${employeeTab === 'today' ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}
+                            className={`flex-1 sm:flex-none px-6 py-4 sm:py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${employeeTab === 'today' ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}
                         >
                             Hoy
                         </button>
                         <button
                             onClick={() => setEmployeeTab('history')}
-                            className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${employeeTab === 'history' ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}
+                            className={`flex-1 sm:flex-none px-6 py-4 sm:py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${employeeTab === 'history' ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100'}`}
                         >
                             Mi Historial
                         </button>
@@ -87,7 +87,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
                             <div className="flex gap-4 no-print shrink-0">
                                 <button
                                     onClick={() => setShowAbsenceModal(true)}
-                                    className="flex-1 bg-white hover:bg-red-50 text-red-500 py-4 rounded-3xl font-black border-2 border-red-100 shadow-sm transition-all uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 active:scale-95"
+                                    className="flex-1 bg-white hover:bg-red-50 text-red-500 py-5 sm:py-4 rounded-3xl font-black border-2 border-red-100 shadow-sm transition-all uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 active:scale-95 interactive-button"
                                 >
                                     <i className="fas fa-calendar-times text-base"></i>
                                     Marcar Ausencia
@@ -120,43 +120,43 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
                         </div>
 
                         {/* Panel de Actividad Reciente */}
-                        <div className="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col h-full min-h-0">
+                        <div className="lg:col-span-2 bg-white p-6 sm:p-8 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col h-full min-h-0">
                             <div className="flex justify-between items-center mb-8">
                                 <div>
-                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Listado de Actividad Reciente</h3>
-                                    <p className="text-[11px] font-black text-blue-600 uppercase tracking-widest mt-1">Detalle de tus fichajes</p>
+                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Actividad Reciente</h3>
+                                    <p className="text-[11px] font-black text-blue-600 uppercase tracking-widest mt-1">Tus fichajes</p>
                                 </div>
                                 <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
                                     <i className="fas fa-list-ul"></i>
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-4">
+                            <div className="flex-1 overflow-y-auto lg:overflow-y-auto custom-scrollbar pr-0 sm:pr-4 space-y-4">
                                 {(() => {
                                     const grouped = getGroupedRecords(user.id, records);
                                     return grouped.slice(0, 10).map((day: any, i) => (
-                                        <div key={i} className="group p-6 rounded-[2.5rem] bg-slate-50 border border-transparent hover:border-blue-100 transition-all shadow-sm premium-card animate-list-item" style={{ animationDelay: `${i * 0.05}s` }}>
-                                            <div className="flex justify-between items-center mb-5">
+                                        <div key={i} className="group p-5 sm:p-6 rounded-[2.5rem] bg-slate-50 border border-transparent hover:border-blue-100 transition-all shadow-sm premium-card animate-list-item" style={{ animationDelay: `${i * 0.05}s` }}>
+                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-5">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></div>
-                                                    <span className="text-base font-black text-slate-800 uppercase tracking-tight">{new Date(day.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}</span>
+                                                    <span className="text-sm sm:text-base font-black text-slate-800 uppercase tracking-tight">{new Date(day.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
                                                 </div>
-                                                <span className="text-[11px] font-black bg-slate-900 text-white px-5 py-2 rounded-full shadow-lg shadow-slate-900/5 uppercase tracking-wider">{formatDuration(calculateDurationHours(day.in, day.out))}</span>
+                                                <span className="text-[10px] sm:text-[11px] font-black bg-slate-900 text-white px-4 sm:px-5 py-2 rounded-full shadow-lg shadow-slate-900/5 uppercase tracking-wider">{formatDuration(calculateDurationHours(day.in, day.out))}</span>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-6">
-                                                <div className="bg-white p-5 rounded-2xl border border-white shadow-sm hover:shadow-md transition-shadow">
-                                                    <p className="text-[10px] text-slate-400 font-black uppercase mb-1.5 tracking-widest flex items-center gap-2">
+                                            <div className="grid grid-cols-2 gap-3 sm:gap-6">
+                                                <div className="bg-white p-4 sm:p-5 rounded-2xl border border-white shadow-sm hover:shadow-md transition-shadow">
+                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 font-black uppercase mb-1 tracking-widest flex items-center gap-2">
                                                         <i className="fas fa-sign-in-alt text-green-500"></i>
-                                                        Entrada
+                                                        In
                                                     </p>
-                                                    <p className="font-black text-slate-700 text-xl tracking-tight">{day.in ? new Date(day.in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
+                                                    <p className="font-black text-slate-700 text-lg sm:text-xl tracking-tight">{day.in ? new Date(day.in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
                                                 </div>
-                                                <div className="bg-white p-5 rounded-2xl border border-white shadow-sm hover:shadow-md transition-shadow">
-                                                    <p className="text-[10px] text-slate-400 font-black uppercase mb-1.5 tracking-widest flex items-center gap-2">
+                                                <div className="bg-white p-4 sm:p-5 rounded-2xl border border-white shadow-sm hover:shadow-md transition-shadow">
+                                                    <p className="text-[9px] sm:text-[10px] text-slate-400 font-black uppercase mb-1 tracking-widest flex items-center gap-2">
                                                         <i className="fas fa-sign-out-alt text-red-500"></i>
-                                                        Salida
+                                                        Out
                                                     </p>
-                                                    <p className="font-black text-slate-700 text-xl tracking-tight">{day.out ? new Date(day.out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
+                                                    <p className="font-black text-slate-700 text-lg sm:text-xl tracking-tight">{day.out ? new Date(day.out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -178,16 +178,16 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
             </div>
 
             {/* Floating Scan Button */}
-            <div className="fixed bottom-8 left-0 right-0 z-50 flex justify-center px-6 no-print">
+            <div className="fixed bottom-6 lg:bottom-8 left-0 right-0 z-50 flex justify-center px-4 sm:px-6 no-print">
                 <button
                     disabled={isDisabled}
                     onClick={() => setShowScanner(true)}
                     className="w-full max-w-sm bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-[2.5rem] font-black shadow-[0_20px_40px_rgba(37,99,235,0.3)] flex items-center justify-center gap-4 active:scale-95 transition-all uppercase tracking-[0.2em] text-sm disabled:bg-slate-300 disabled:opacity-50 disabled:scale-100 disabled:shadow-none interactive-button"
                 >
-                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center shrink-0">
                         <i className="fas fa-qrcode text-lg"></i>
                     </div>
-                    {getDayStatusText}
+                    <span className="truncate">{getDayStatusText}</span>
                 </button>
             </div>
         </>

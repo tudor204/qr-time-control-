@@ -60,8 +60,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees, abse
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
             {/* Filtros */}
-            {/* ... (sin cambios) */}
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm shadow-slate-200/50">
+            <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] border border-slate-100 shadow-sm shadow-slate-200/50">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xs">
                         <i className="fas fa-filter"></i>
@@ -69,7 +68,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees, abse
                     <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Panel de Filtros</h3>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
                     {/* Selector de empleado */}
                     <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase block ml-2 tracking-wider">Empleado</label>
@@ -119,10 +118,10 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees, abse
                 </div>
 
                 {/* Toggle de vista - Segmented Control Style */}
-                <div className="bg-slate-50 p-1.5 rounded-[1.5rem] flex gap-1">
+                <div className="bg-slate-50 p-1.5 rounded-[1.5rem] flex flex-col sm:flex-row gap-1">
                     <button
                         onClick={() => setViewMode('detail')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.15em] transition-all duration-300 ${viewMode === 'detail' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'
+                        className={`flex-1 flex items-center justify-center gap-2 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.15em] transition-all duration-300 ${viewMode === 'detail' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'
                             }`}
                     >
                         <i className={`fas fa-list-ul ${viewMode === 'detail' ? 'text-blue-500' : 'text-slate-300'}`}></i>
@@ -131,7 +130,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees, abse
                     <button
                         onClick={() => setViewMode('monthly')}
                         disabled={selectedEmployeeId === 'all'}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.15em] transition-all duration-300 ${viewMode === 'monthly' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'
+                        className={`flex-1 flex items-center justify-center gap-2 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.15em] transition-all duration-300 ${viewMode === 'monthly' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-100' : 'text-slate-400 hover:text-slate-600'
                             } disabled:opacity-40 disabled:cursor-not-allowed`}
                     >
                         <i className={`fas fa-calendar-days ${viewMode === 'monthly' ? 'text-blue-500' : 'text-slate-300'}`}></i>
@@ -157,9 +156,9 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees, abse
                                     endDate || dateFilteredRecords[0]?.timestamp.split('T')[0],
                                     dateFilteredAbsences
                                 )}
-                                className="group relative overflow-hidden bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-95 transition-all interactive-button"
+                                className="w-full sm:w-auto group relative overflow-hidden bg-slate-900 text-white px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-95 transition-all interactive-button"
                             >
-                                <span className="relative z-10 flex items-center gap-2">
+                                <span className="relative z-10 flex items-center justify-center gap-2">
                                     <i className="fas fa-file-pdf text-xs text-red-400"></i>
                                     Descargar Reporte
                                 </span>
@@ -176,16 +175,16 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees, abse
                             </div>
                         ) : (
                             combinedData.map((item: any, i) => (
-                                <div key={i} className={`group p-5 rounded-3xl flex items-center justify-between border-2 transition-all premium-card animate-list-item ${item.isAbsence ? 'bg-red-50/50 border-red-100' : 'bg-slate-50/50 hover:bg-white border-transparent hover:border-blue-600/10'}`} style={{ animationDelay: `${i * 0.05}s` }}>
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg ${item.isAbsence ? 'bg-red-100 text-red-500' : item.type === 'IN' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'}`}>
+                                <div key={i} className={`group p-4 sm:p-5 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between border-2 transition-all premium-card animate-list-item ${item.isAbsence ? 'bg-red-50/50 border-red-100' : 'bg-slate-50/50 hover:bg-white border-transparent hover:border-blue-600/10'}`} style={{ animationDelay: `${i * 0.05}s` }}>
+                                    <div className="flex items-center gap-4 mb-3 sm:mb-0 w-full">
+                                        <div className={`w-12 h-12 flex-shrink-0 rounded-2xl flex items-center justify-center text-lg ${item.isAbsence ? 'bg-red-100 text-red-500' : item.type === 'IN' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'}`}>
                                             <i className={`fas ${item.isAbsence ? 'fa-calendar-times' : item.type === 'IN' ? 'fa-sign-in-alt' : 'fa-sign-out-alt'}`}></i>
                                         </div>
-                                        <div>
-                                            <p className="font-black text-slate-800 text-sm leading-tight mb-1">{item.userName}</p>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-black text-slate-800 text-sm leading-tight mb-1 truncate">{item.userName}</p>
                                             <div className="flex items-center gap-2">
                                                 <i className={`far ${item.isAbsence ? 'fa-calendar' : 'fa-clock'} text-[10px] text-slate-300`}></i>
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight truncate">
                                                     {item.isAbsence
                                                         ? new Date(item.timestamp).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
                                                         : new Date(item.timestamp).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -194,8 +193,8 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees, abse
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex flex-col items-end">
-                                        <span className={`text-[10px] font-black px-4 py-1.5 rounded-full tracking-widest ${item.isAbsence ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' :
+                                    <div className="flex flex-col items-end w-full sm:w-auto">
+                                        <span className={`w-full sm:w-auto text-center text-[10px] font-black px-4 py-1.5 rounded-full tracking-widest ${item.isAbsence ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' :
                                             item.type === 'IN' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'
                                             }`}>
                                             {item.isAbsence ? `AUSENCIA: ${item.reason}` : item.type === 'IN' ? 'ENTRADA' : 'SALIDA'}
@@ -206,7 +205,8 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees, abse
                         )}
                     </div>
                 </div >
-            )}
+            )
+            }
 
             {/* Vista Mensual */}
             {
