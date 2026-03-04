@@ -56,7 +56,7 @@ export const useAuthController = (showFeedback: (msg: string, type?: 'success' |
                     weeklyHours: 40,
                     vacations: []
                 };
-                await dbService.saveUserProfile(newUser);
+                await dbService.saveUserProfile(newUser.id, newUser);
                 setUser(newUser);
                 showFeedback('Cuenta creada correctamente');
             } else {

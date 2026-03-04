@@ -51,18 +51,18 @@ export const EmployeeProfileModal: React.FC<EmployeeProfileModalProps> = ({
             showFeedback('Empleado reactivado', 'success');
             const updatedEmployees = employees.map(e => e.id === employee.id ? { ...employee, isDeleted: false, deletedAt: undefined } : e);
             setEmployees(updatedEmployees);
-            
+
             // Si no hay más empleados eliminados, ocultar automáticamente la vista de eliminados
             const hasDeletedEmployees = updatedEmployees.some(e => e.isDeleted);
             if (!hasDeletedEmployees && setShowDeletedEmployees) {
                 setShowDeletedEmployees(false);
             }
-            
+
             // Llamar callback para que AdminDashboard refresque
             if (onReactivateSuccess) {
                 onReactivateSuccess();
             }
-            
+
             setSelectedEmployee(null);
         } catch (e: any) {
             showFeedback(e.message || 'Error al reactivar', 'error');
@@ -164,24 +164,24 @@ export const EmployeeProfileModal: React.FC<EmployeeProfileModalProps> = ({
                 <div className="p-6 sm:p-10 overflow-y-auto bg-slate-50 space-y-6 sm:space-y-8 custom-scrollbar">
                     {/* Botones de eliminación y reactivación */}
                     {employee.role !== 'ADMIN' && (
-                        <div className="flex gap-4 mb-6">
+                        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6">
                             {employee.isDeleted ? (
                                 <button
                                     onClick={handleReactivate}
-                                    className="bg-green-600 hover:bg-green-700 text-white font-black px-6 py-3 rounded-2xl text-xs uppercase tracking-widest shadow-md transition-all"
+                                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-black px-6 py-3 rounded-2xl text-xs uppercase tracking-widest shadow-md transition-all"
                                 >
                                     Reactivar Empleado
                                 </button>
                             ) : (<>
                                 <button
                                     onClick={handleSoftDelete}
-                                    className="bg-yellow-400 hover:bg-yellow-500 text-white font-black px-6 py-3 rounded-2xl text-xs uppercase tracking-widest shadow-md transition-all"
+                                    className="w-full sm:w-auto bg-yellow-400 hover:bg-yellow-500 text-white font-black px-6 py-3 rounded-2xl text-xs uppercase tracking-widest shadow-md transition-all"
                                 >
                                     Desactivar (Soft Delete)
                                 </button>
                                 <button
                                     onClick={handleHardDelete}
-                                    className="bg-red-600 hover:bg-red-700 text-white font-black px-6 py-3 rounded-2xl text-xs uppercase tracking-widest shadow-md transition-all"
+                                    className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-black px-6 py-3 rounded-2xl text-xs uppercase tracking-widest shadow-md transition-all"
                                 >
                                     Eliminar Permanente (Hard Delete)
                                 </button>
