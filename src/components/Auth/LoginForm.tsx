@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { FiEye, FiEyeOff } from "react-icons/fi";
 
+
 interface LoginFormProps {
     isRegistering: boolean;
     formData: { name: string; email: string; password: string };
     onSubmit: (e: React.FormEvent) => void;
     onChange: (field: 'name' | 'email' | 'password', value: string) => void;
     onToggleRegister: () => void;
+    onBiometricAuth?: () => Promise<boolean>;
+    hasBiometric: boolean;
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({
@@ -14,7 +17,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     formData,
     onSubmit,
     onChange,
-    onToggleRegister
+    onToggleRegister,
+    onBiometricAuth,
+    hasBiometric
 }) => {
 
     const [showPassword, setShowPassword] = useState(false);
@@ -131,6 +136,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                             {isRegistering ? 'Registrarme' : 'Entrar'}
                         </button>
                     </form>
+
+                    {!isRegistering && hasBiometric && onBiometricAuth && (
+                        <div className="mt-4">
+                            <button
+                                onClick={onBiometricAuth}
+                                className="w-full flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-slate-900/20 active:scale-[0.98] focus:ring-4 focus:ring-slate-900/20 transition-all duration-200 interactive-button"
+                            >
+                                <i className="fas fa-fingerprint text-lg"></i>
+                                <span>Acceso Biométrico</span>
+                            </button>
+                        </div>
+                    )}
 
                     <div className="relative my-8">
                         <div className="absolute inset-0 flex items-center">

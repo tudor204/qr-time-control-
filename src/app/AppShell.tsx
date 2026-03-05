@@ -24,7 +24,9 @@ export const AppShell: React.FC = () => {
     formData,
     setFormData,
     handleAuth,
-    logout
+    handleBiometricAuth,
+    logout,
+    biometricEnabled
   } = useAuthController(showFeedback);
 
   const {
@@ -150,6 +152,8 @@ export const AppShell: React.FC = () => {
         onSubmit={handleAuth}
         onChange={(field, value) => setFormData({ ...formData, [field]: value })}
         onToggleRegister={() => setIsRegistering(!isRegistering)}
+        onBiometricAuth={handleBiometricAuth}
+        hasBiometric={biometricEnabled}
       />
     );
   }
