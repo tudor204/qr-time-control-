@@ -43,9 +43,20 @@ export interface AttendanceRecord {
   id?: string;
   userId: string;
   userName: string;
-  timestamp: string;
+  timestamp: string;           // ISO string
   type: RecordType;
   location: string;
+  
+  // nuevo sistema de estados e incidencias
+  status?:
+    | 'NORMAL'            // registro estándar sin problemas
+    | 'MISSING_OUT'       // falta salida (turno abierto o detectado como ausente)
+    | 'AUTO_CLOSED'       // cerró automáticamente tras límite de horas
+    | 'USER_CORRECTED';   // corregido por el propio trabajador
+
+  correctedBy?: string;   // uid de quien hizo la corrección (user o admin)
+  correctedAt?: string;   // timestamp de la corrección
+  notes?: string;         // motivo/justificación de la incidencia
 }
 
 export interface AuthState {

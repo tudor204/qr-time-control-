@@ -26,10 +26,17 @@ export const getGroupedRecords = (userId: string, records: AttendanceRecord[]) =
     userRecs.forEach(rec => {
         const dateKey = rec.timestamp.split('T')[0];
         if (!groups[dateKey]) groups[dateKey] = { date: dateKey, in: null, out: null };
-        if (rec.type === RecordType.IN) groups[dateKey].in = rec.timestamp;
-        if (rec.type === RecordType.OUT) groups[dateKey].out = rec.timestamp;
+        if (rec.type === RecordType.IN && !groups[dateKey].in) groups[dateKey].in = rec.timestamp;
+        if (rec.type === RecordType.OUT && !groups[dateKey].out) groups[dateKey].out = rec.timestamp;
     });
     return Object.values(groups).sort((a: any, b: any) => b.date.localeCompare(a.date));
+};
+
+/**
+ * Filtra grupos que contienen tanto entrada como salida
+ */
+export const filterCompleteGroups = (groups: any[]) => {
+    return groups.filter(g => g.in && g.out);
 };
 
 /**
@@ -51,8 +58,8 @@ export const getWeeklyStats = (emp: User, records: AttendanceRecord[], isOnVacat
 
     const groups = getGroupedRecords(emp.id, records);
 
-    // Filtrar registros de la semana actual (Lunes a Domingo)
-    const totalHours = groups
+    // Filtrar registros de la semana actual (Lunes a Domingo) y sólo turnos completos
+    const totalHours = filterCompleteGroups(groups)
         .filter((g: any) => {
             const d = new Date(g.date);
             return d >= monday && d <= sunday;
@@ -89,11 +96,12 @@ export const getWeeklyStats = (emp: User, records: AttendanceRecord[], isOnVacat
  * Calcula las estadísticas mensuales de un empleado
  */
 export const getMonthlyStats = (userId: string, records: AttendanceRecord[]) => {
+    // ahora ignoramos turnos incompletos
+    const groups = filterCompleteGroups(getGroupedRecords(userId, records));
+
     const today = new Date();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
-
-    const groups = getGroupedRecords(userId, records);
 
     const monthlyHours = groups
         .filter((g: any) => {

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { AttendanceRecord, User, Absence, Company, UserRole } from '../types';
 import { dbService } from '../services/dbService';
+import { flagStaleShifts } from '../utils/attendanceUtils';
 
 export const useAppState = () => {
     const [records, setRecords] = useState<AttendanceRecord[]>([]);
@@ -17,6 +18,16 @@ export const useAppState = () => {
                 dbService.getAbsences(isAdmin ? undefined : currentUser.id),
                 isAdmin ? dbService.getCompanies() : Promise.resolve([])
             ]);
+            // si hay ins abiertos que llevan >12h, marcarlos en la base
+            const corrected = flagStaleShifts(recs);
+            // sólo actualizamos los que hayan cambiado
+            corrected.forEach(r => {
+                const original = recs.find(x => x.id === r.id);
+                if (original && original.status !== r.status) {
+                    // no await para no bloquear, pero informamos si hay fallo
+                    dbService.updateAttendanceRecord(r.userId, r.id!, { status: r.status });
+                }
+            });
             setRecords(recs);
             setEmployees(emps);
             setAbsences(abs);

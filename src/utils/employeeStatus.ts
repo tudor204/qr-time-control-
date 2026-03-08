@@ -1,4 +1,5 @@
-import { User, AttendanceRecord, RecordType, Absence } from '../types';
+import { User, AttendanceRecord, Absence } from '../types';
+import { detectOpenShift, analyzeAttendanceIncidents } from './attendanceUtils';
 
 /**
  * Verifica si un empleado está actualmente de vacaciones
@@ -44,12 +45,30 @@ export const getEmployeeStatus = (emp: User, records: AttendanceRecord[], absenc
         };
     }
 
-    // Check if active
+    // Check daily state using helper utilities
     const userRecs = records.filter(r => r.userId === emp.id);
-    const lastRec = [...userRecs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-    const isActive = lastRec && lastRec.type === RecordType.IN;
 
-    if (isActive) {
+    // si hay algún incidente evidente, mostramos alerta
+    const incident = analyzeAttendanceIncidents(userRecs);
+    if (incident.status === 'INCIDENT') {
+        // etiquetas sencillas; la UI puede ampliarlas si hace falta
+        let label = 'Incidencia';
+        if (incident.type === 'MISSING_OUT') label = 'Falta salida';
+        if (incident.type === 'DOUBLE_IN') label = 'Entrada duplicada';
+        if (incident.type === 'OUT_WITHOUT_IN') label = 'Salida sin entrada';
+        return {
+            label,
+            color: 'text-yellow-600',
+            bg: 'bg-yellow-50',
+            border: 'border-yellow-200',
+            icon: '⚠️',
+            reason: incident.type
+        };
+    }
+
+    // finally detect open shift (works same day)
+    const hasOpen = detectOpenShift(userRecs);
+    if (hasOpen) {
         return {
             label: 'Trabajando',
             color: 'text-green-600',
@@ -67,3 +86,9 @@ export const getEmployeeStatus = (emp: User, records: AttendanceRecord[], absenc
         icon: '🔴'
     };
 };
+
+/**
+ * Comprueba si hay un turno abierto en el histórico de registros.
+ * Se reexporta para uso en otros módulos (por ejemplo, alerta al iniciar la app).
+ */
+export { detectOpenShift };

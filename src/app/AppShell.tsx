@@ -82,6 +82,42 @@ export const AppShell: React.FC = () => {
     }
   }, [user, loadData]);
 
+  // si un empleado abre la app y ayer quedó un turno abierto, avisamos
+  useEffect(() => {
+    if (user && user.role !== UserRole.ADMIN) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const dayKey = yesterday.toISOString().split('T')[0];
+      const yesterdayRecs = records.filter(r => r.userId === user.id && r.timestamp.startsWith(dayKey));
+      const hasIn = yesterdayRecs.some(r => r.type === RecordType.IN);
+      const hasOut = yesterdayRecs.some(r => r.type === RecordType.OUT);
+      if (hasIn && !hasOut) {
+        const proceed = window.confirm('⚠ No fichaste salida ayer. ¿Quieres registrarla ahora?');
+        if (proceed) {
+          const manual = window.prompt('Hora de salida estimada (HH:MM, dejar vacío = ahora)');
+          if (manual !== null) {
+            const timePart = manual.trim() || new Date().toISOString().split('T')[1];
+            const timestamp = `${dayKey}T${timePart}`;
+            (async () => {
+              try {
+                const docRef = await dbService.addRecord(user.id, user.name, 'manual', RecordType.OUT);
+                await dbService.updateAttendanceRecord(user.id, docRef.id, {
+                  timestamp,
+                  status: 'USER_CORRECTED',
+                  notes: 'Salida añadida tras olvido',
+                });
+                showFeedback('Salida retrospectiva registrada', 'success');
+                loadData(user);
+              } catch (e) {
+                showFeedback('Error al registrar salida manual', 'error');
+              }
+            })();
+          }
+        }
+      }
+    }
+  }, [records, user, loadData, showFeedback]);
+
   // --- Handlers ---
   const handleQrScan = async (code: string) => {
     if (!user || code.trim() !== qrText.trim()) {

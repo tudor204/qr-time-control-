@@ -59,6 +59,58 @@ export const dbService = {
     }
   },
 
+  /**
+   * Actualiza un registro de asistencia existente. Útil para correcciones o
+   * cierres automáticos.
+   * @param userId UID del empleado propietario del registro
+   * @param recordId ID del documento de attendance
+   * @param data campos parciales de AttendanceRecord a modificar
+   */
+  async updateAttendanceRecord(userId: string, recordId: string, data: Partial<AttendanceRecord>) {
+    try {
+      const recRef = doc(db, 'users', userId, 'attendance', recordId);
+      // eliminamos campos undefined antes de enviar
+      const payload: any = { ...data };
+      Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+      await setDoc(recRef, payload, { merge: true });
+    } catch (error) {
+      console.error('Error en updateAttendanceRecord:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Corrección administrativa: crea un registro OUT retrospectivo para cerrar un turno abierto.
+   * Marca el nuevo registro con status='USER_CORRECTED' y auditoría.
+   */
+  async correctMissingOut(
+    userId: string,
+    userName: string,
+    correctionDate: string,  // YYYY-MM-DD
+    outTime: string,          // HH:mm
+    reason: string,
+    adminId: string
+  ) {
+    try {
+      const timestamp = `${correctionDate}T${outTime}:00`;
+      const newOutRecord = {
+        userId,
+        userName,
+        timestamp,
+        type: RecordType.OUT,
+        location: 'admin-correction',
+        status: 'USER_CORRECTED',
+        correctedBy: adminId,
+        correctedAt: new Date().toISOString(),
+        notes: reason
+      };
+      return await addDoc(collection(db, 'users', userId, 'attendance'), newOutRecord);
+    } catch (error) {
+      console.error('Error en correctMissingOut:', error);
+      throw error;
+    }
+  },
+
   // OBTENER REGISTROS (Jerárquico)
   async getRecords(userId?: string): Promise<AttendanceRecord[]> {
     try {

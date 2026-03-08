@@ -1,19 +1,48 @@
 import React from 'react';
-import { User, Absence } from '../../types';
+import { User, Absence, AttendanceRecord, RecordType } from '../../types';
 import { getWeeklyStats } from '../../utils/timeCalculations';
 import { isCurrentlyOnVacation, getEmployeeStatus } from '../../utils/employeeStatus';
+import { analyzeAttendanceIncidents } from '../../utils/attendanceUtils';
 
 interface ProductivityWidgetProps {
     employee: User;
     title: string;
-    records: any[];
+    records: AttendanceRecord[];               // puede ser solo del empleado o todos (admin)
     absences?: Absence[];
+    allRecords?: AttendanceRecord[];           // opcional, sólo para vistas globales
 }
 
-export const ProductivityWidget: React.FC<ProductivityWidgetProps> = ({ employee, title, records, absences = [] }) => {
+export const ProductivityWidget: React.FC<ProductivityWidgetProps> = ({ employee, title, records, absences = [], allRecords }) => {
     const currentStatus = getEmployeeStatus(employee, records, absences);
     const stats = getWeeklyStats(employee, records, isCurrentlyOnVacation(employee), absences);
     const isAbsentToday = currentStatus.label === 'Ausente';
+
+    // indicadores globales (cuando admin pasa todas las fichadas)
+    let employeesWorking: number | null = null;
+    let closedShiftsToday: number | null = null;
+    let incidentsCount: number | null = null;
+    if (allRecords && allRecords.length > 0) {
+        const users = Array.from(new Set(allRecords.map(r => r.userId)));
+        employeesWorking = users.filter(uid => {
+            const recs = allRecords.filter(r => r.userId === uid);
+            const last = [...recs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+            return last?.type === RecordType.IN;
+        }).length;
+
+        const todayKey = new Date().toISOString().split('T')[0];
+        closedShiftsToday = users.reduce((acc, uid) => {
+            const recs = allRecords.filter(r => r.userId === uid && r.timestamp.startsWith(todayKey));
+            const hasIn = recs.some(r => r.type === RecordType.IN);
+            const hasOut = recs.some(r => r.type === RecordType.OUT);
+            return acc + (hasIn && hasOut ? 1 : 0);
+        }, 0);
+
+        incidentsCount = users.reduce((acc, uid) => {
+            const recs = allRecords.filter(r => r.userId === uid);
+            const inc = analyzeAttendanceIncidents(recs);
+            return acc + (inc.status === 'INCIDENT' ? 1 : 0);
+        }, 0);
+    }
 
     return (
         <div className={`p-6 md:p-8 rounded-[2.5rem] shadow-sm border mb-6 relative overflow-hidden transition-all group premium-card ${stats.onVacation ? 'bg-orange-50 border-orange-200' : isAbsentToday ? 'bg-red-50 border-red-200' : 'bg-white border-slate-100 hover:shadow-xl hover:shadow-blue-600/5'}`}>
@@ -63,6 +92,13 @@ export const ProductivityWidget: React.FC<ProductivityWidgetProps> = ({ employee
                     </div>
                 </div>
             </div>
+            {employeesWorking !== null && (
+                <div className="mt-4 text-[11px] text-slate-600 space-y-1">
+                    <p>Empleados trabajando: {employeesWorking}</p>
+                    <p>Turnos cerrados hoy: {closedShiftsToday}</p>
+                    <p>Incidencias: {incidentsCount}</p>
+                </div>
+            )}
         </div>
     );
 };

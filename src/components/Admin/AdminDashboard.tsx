@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { User, AttendanceRecord, Absence, Company, RecordType } from '../../types';
 import { dbService } from '../../services/dbService';
 import { getEmployeeStatus } from '../../utils/employeeStatus';
+import { CorrectAttendanceModal } from './CorrectAttendanceModal';
 import { ReportsTab } from './ReportsTab';
 import { Share } from '@capacitor/share';
 
@@ -48,11 +49,68 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 }) => {
     const qrContainerRef = useRef<HTMLDivElement>(null);
     const [showDeletedEmployees, setShowDeletedEmployeesState] = React.useState(false);
+    const [correctingEmployee, setCorrectingEmployee] = React.useState<User | null>(null);
 
     const setShowDeletedEmployees = (value: boolean) => {
         setShowDeletedEmployeesState(value);
         if (onShowDeletedEmployeesChange) {
             onShowDeletedEmployeesChange(value);
+        }
+    };
+
+    // Detecta el primer turno abierto (sin salida) de un empleado, empezando por el más reciente
+    const getOpenShiftForEmployee = (empId: string) => {
+        const empRecords = records.filter(r => r.userId === empId);
+
+        // Agrupar por día
+        const byDay: { [date: string]: AttendanceRecord[] } = {};
+        empRecords.forEach(r => {
+            const d = r.timestamp.split('T')[0];
+            if (!byDay[d]) byDay[d] = [];
+            byDay[d].push(r);
+        });
+
+        // Ordenar días de más reciente a más antiguo
+        const days = Object.keys(byDay).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+        for (const day of days) {
+            const dayRecs = byDay[day].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+            let ins = 0;
+            let outs = 0;
+            let lastIn: AttendanceRecord | null = null;
+            dayRecs.forEach(r => {
+                if (r.type === RecordType.IN) {
+                    ins++;
+                    lastIn = r;
+                }
+                if (r.type === RecordType.OUT) {
+                    outs++;
+                }
+            });
+            // Si hay un turno abierto en este día, devolvemos el último IN
+            if (ins > outs && lastIn) {
+                return lastIn;
+            }
+        }
+        return null;
+    };
+
+    const handleCorrectAttendance = async (correction: { timestamp: string; notes: string }) => {
+        if (!correctingEmployee) return;
+        try {
+            await dbService.correctMissingOut(
+                correctingEmployee.id,
+                correctingEmployee.name,
+                correction.timestamp.split('T')[0],
+                correction.timestamp.split('T')[1].substring(0, 5),
+                correction.notes,
+                user.id
+            );
+            showFeedback(`Salida corregida para ${correctingEmployee.name}`, 'success');
+            setCorrectingEmployee(null);
+            loadData(user);
+        } catch (e: any) {
+            showFeedback(e.message || 'Error al corregir salida', 'error');
         }
     };
 
@@ -299,8 +357,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                                 <h4 className="font-black text-slate-800 text-base tracking-tight truncate group-hover:text-blue-600 transition-colors uppercase">{emp.name}</h4>
                                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{emp.email}</p>
                                             </div>
-                                            <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
-                                                {status.icon}
+                                            <div className="flex gap-2">
+                                                <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                                                    {status.icon}
+                                                </div>
+                                                {getOpenShiftForEmployee(emp.id) && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setCorrectingEmployee(emp);
+                                                        }}
+                                                        className="w-10 h-10 bg-orange-100 hover:bg-orange-600 text-orange-600 hover:text-white rounded-2xl flex items-center justify-center transition-all transform hover:scale-110"
+                                                        title="Cerrar salida faltante"
+                                                    >
+                                                        <i className="fas fa-clock text-sm"></i>
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
 
@@ -359,6 +431,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         {(window as any).Capacitor?.isNativePlatform() ? 'Compartir / Imprimir QR' : 'Imprimir Código QR'}
                     </button>
                 </div>
+            )}
+
+            {/* Modal de Corrección de Salida */}
+            {correctingEmployee && (
+                <CorrectAttendanceModal
+                    employee={correctingEmployee}
+                    openShift={getOpenShiftForEmployee(correctingEmployee.id)}
+                    onSave={handleCorrectAttendance}
+                    onClose={() => setCorrectingEmployee(null)}
+                />
             )}
         </div>
     );
