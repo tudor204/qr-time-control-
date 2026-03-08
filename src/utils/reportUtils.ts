@@ -8,7 +8,7 @@ import { Share } from '@capacitor/share';
 /**
  * Función helper para guardar y compartir PDF en entorno móvil (Capacitor)
  */
-const saveAndSharePDF = async (doc: jsPDF, filename: string) => {
+export const saveAndSharePDF = async (doc: jsPDF, filename: string) => {
     const isCapacitor = (window as any).Capacitor?.isNativePlatform();
 
     if (isCapacitor) {
@@ -19,7 +19,7 @@ const saveAndSharePDF = async (doc: jsPDF, filename: string) => {
             const savedFile = await Filesystem.writeFile({
                 path: filename,
                 data: pdfBase64,
-                directory: Directory.Cache
+                directory: Directory.Documents
             });
 
             // Compartir el archivo guardado

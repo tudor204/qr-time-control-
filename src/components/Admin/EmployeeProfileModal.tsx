@@ -3,10 +3,7 @@ import { User, Company } from '../../types';
 import { dbService } from '../../services/dbService';
 import { ProductivityWidget } from '../Dashboard/ProductivityWidget';
 import { AttendanceRecord, Absence } from '../../types';
-import { getWeeklyStats } from '../../utils/timeCalculations';
-import { isCurrentlyOnVacation } from '../../utils/employeeStatus';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+
 
 interface EmployeeProfileModalProps {
     employee: User;
@@ -68,29 +65,7 @@ export const EmployeeProfileModal: React.FC<EmployeeProfileModalProps> = ({
             showFeedback(e.message || 'Error al reactivar', 'error');
         }
     };
-    const handleGeneratePDF = () => {
-        const doc = new jsPDF();
-        doc.setFontSize(20);
-        doc.text('Reporte de Empleado', 14, 22);
-        doc.setFontSize(10);
-        doc.text(`Nombre: ${employee.name}`, 14, 32);
-        doc.text(`Email: ${employee.email}`, 14, 38);
-        const stats = getWeeklyStats(employee, records, isCurrentlyOnVacation(employee), absences);
-        doc.text(`Horas esta semana: ${stats.total}`, 14, 44);
-        const empRecords = records
-            .filter(r => r.userId === employee.id)
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        autoTable(doc, {
-            startY: 55,
-            head: [['Fecha', 'Hora', 'Tipo']],
-            body: empRecords.map(r => [
-                new Date(r.timestamp).toLocaleDateString(),
-                new Date(r.timestamp).toLocaleTimeString(),
-                r.type
-            ]),
-        });
-        doc.save(`Reporte_${employee.name}.pdf`);
-    };
+
 
     const updateEmployee = async (updatedUser: User) => {
         try {
@@ -145,12 +120,7 @@ export const EmployeeProfileModal: React.FC<EmployeeProfileModalProps> = ({
                         </div>
                     </div>
                     <div className="flex gap-2">
-                        <button
-                            onClick={handleGeneratePDF}
-                            className="bg-slate-900 text-white w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-xl sm:rounded-2xl hover:bg-slate-800 transition-all shrink-0"
-                        >
-                            <i className="fas fa-file-pdf"></i>
-                        </button>
+
                         <button
                             onClick={onClose}
                             className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-xl sm:rounded-2xl bg-white border border-slate-100 text-slate-400 hover:text-red-500 transition-all shrink-0"
