@@ -112,6 +112,35 @@ export const dbService = {
   },
 
   // OBTENER REGISTROS (Jerárquico)
+  async registerManualOut(userId: string, userName: string, dateKey: string, timeString: string) {
+    try {
+      // Intenta crear una fecha ISO válida usando la hora local ingresada
+      const localDate = new Date(`${dateKey}T${timeString}:00`);
+      let isoString: string;
+      if (!isNaN(localDate.getTime())) {
+          isoString = localDate.toISOString();
+      } else {
+          // Fallback seguro si la fecha falla
+          isoString = `${dateKey}T${timeString}:00.000Z`;
+      }
+
+      const newOutRecord = {
+        userId,
+        userName,
+        timestamp: isoString,
+        type: RecordType.OUT,
+        location: 'manual-app',
+        status: 'USER_CORRECTED',
+        notes: 'Salida añadida tras olvido'
+      };
+      
+      return await addDoc(collection(db, 'users', userId, 'attendance'), newOutRecord);
+    } catch (error) {
+      console.error('Error en registerManualOut:', error);
+      throw error;
+    }
+  },
+
   async getRecords(userId?: string): Promise<AttendanceRecord[]> {
     try {
       let q;
@@ -132,6 +161,15 @@ export const dbService = {
     } catch (error) {
       console.error("Error obteniendo registros:", error);
       return [];
+    }
+  },
+
+  async deleteAttendanceRecord(userId: string, recordId: string) {
+    try {
+      await deleteDoc(doc(db, 'users', userId, 'attendance', recordId));
+    } catch (error) {
+      console.error("Error eliminando registro:", error);
+      throw error;
     }
   },
 

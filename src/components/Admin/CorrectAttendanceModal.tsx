@@ -15,7 +15,8 @@ export const CorrectAttendanceModal: React.FC<CorrectAttendanceModalProps> = ({
     onClose
 }) => {
     const [time, setTime] = useState('');
-    const [reason, setReason] = useState('No especificado');
+    const [reason, setReason] = useState('Olvido del empleado');
+    const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
     if (!openShift) return null;
@@ -26,6 +27,16 @@ export const CorrectAttendanceModal: React.FC<CorrectAttendanceModalProps> = ({
     const handleSave = async () => {
         if (!time) {
             alert('Por favor, introduce una hora de salida');
+            return;
+        }
+
+        const entryTime = new Date(openShift.timestamp);
+        const [hours, minutes] = time.split(':');
+        const outDate = new Date(entryTime);
+        outDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+        if (outDate <= entryTime) {
+            setError(`Error: La salida debe ser posterior a las ${entryTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
             return;
         }
 
@@ -77,9 +88,13 @@ export const CorrectAttendanceModal: React.FC<CorrectAttendanceModalProps> = ({
                         <input
                             type="time"
                             value={time}
-                            onChange={(e) => setTime(e.target.value)}
-                            className="w-full p-4 bg-slate-50 border-2 border-transparent rounded-2xl font-bold text-lg text-slate-900 outline-none focus:bg-white focus:border-blue-600/20 transition-all"
+                            onChange={(e) => {
+                                setTime(e.target.value);
+                                setError(null);
+                            }}
+                            className={`w-full p-4 bg-slate-50 border-2 ${error ? 'border-red-500' : 'border-transparent'} rounded-2xl font-bold text-lg text-slate-900 outline-none focus:bg-white focus:border-blue-600/20 transition-all`}
                         />
+                        {error && <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest mt-2 ml-2 animate-pulse">{error}</p>}
                         <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-3">
                             Fecha: {new Date(dateStr).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </p>

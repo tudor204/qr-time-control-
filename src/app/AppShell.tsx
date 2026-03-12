@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { UserRole, RecordType } from '../types';
+import React, { useEffect, useState } from 'react';
+import { UserRole, RecordType, AttendanceRecord } from '../types';
 import { dbService } from '../services/dbService';
 import Scanner from '../components/Scanner';
 import { AdminDashboard } from '../components/Admin/AdminDashboard';
@@ -13,6 +13,7 @@ import { useAppState } from './useAppState';
 import { useModals } from './useModals';
 import { useRoleView } from './useRoleView';
 import { LoginForm } from '../components/Auth/LoginForm';
+import { ManualOutModal } from '../components/Employee/ManualOutModal';
 
 export const AppShell: React.FC = () => {
   const { feedback, showFeedback } = useFeedback();
@@ -74,7 +75,11 @@ export const AppShell: React.FC = () => {
   } = useRoleView(user, records, absences);
 
   // Estado para mostrar/ocultar empleados eliminados
-  const [, setShowDeletedEmployees] = React.useState(false);
+  const [, setShowDeletedEmployees] = useState(false);
+
+  // Estados para Modal de salida manual
+  const [missingOutRecord, setMissingOutRecord] = useState<AttendanceRecord | null>(null);
+  const [hasDismissedMissingOut, setHasDismissedMissingOut] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -82,41 +87,29 @@ export const AppShell: React.FC = () => {
     }
   }, [user, loadData]);
 
-  // si un empleado abre la app y ayer quedó un turno abierto, avisamos
+  // si un empleado abre la app y ayer quedó un turno abierto, avisamos usando el modal
   useEffect(() => {
-    if (user && user.role !== UserRole.ADMIN) {
+    if (user && user.role !== UserRole.ADMIN && !hasDismissedMissingOut && !missingOutRecord) {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-      const dayKey = yesterday.toISOString().split('T')[0];
+      
+      // Construir la fecha en hora local para evitar desajustes de UTC
+      const offset = yesterday.getTimezoneOffset() * 60000;
+      const localYesterday = new Date(yesterday.getTime() - offset);
+      const dayKey = localYesterday.toISOString().split('T')[0];
+      
       const yesterdayRecs = records.filter(r => r.userId === user.id && r.timestamp.startsWith(dayKey));
       const hasIn = yesterdayRecs.some(r => r.type === RecordType.IN);
       const hasOut = yesterdayRecs.some(r => r.type === RecordType.OUT);
+      
       if (hasIn && !hasOut) {
-        const proceed = window.confirm('⚠ No fichaste salida ayer. ¿Quieres registrarla ahora?');
-        if (proceed) {
-          const manual = window.prompt('Hora de salida estimada (HH:MM, dejar vacío = ahora)');
-          if (manual !== null) {
-            const timePart = manual.trim() || new Date().toISOString().split('T')[1];
-            const timestamp = `${dayKey}T${timePart}`;
-            (async () => {
-              try {
-                const docRef = await dbService.addRecord(user.id, user.name, 'manual', RecordType.OUT);
-                await dbService.updateAttendanceRecord(user.id, docRef.id, {
-                  timestamp,
-                  status: 'USER_CORRECTED',
-                  notes: 'Salida añadida tras olvido',
-                });
-                showFeedback('Salida retrospectiva registrada', 'success');
-                loadData(user);
-              } catch (e) {
-                showFeedback('Error al registrar salida manual', 'error');
-              }
-            })();
-          }
+        const inRecord = yesterdayRecs.find(r => r.type === RecordType.IN);
+        if (inRecord) {
+          setMissingOutRecord(inRecord);
         }
       }
     }
-  }, [records, user, loadData, showFeedback]);
+  }, [records, user, hasDismissedMissingOut, missingOutRecord]);
 
   // --- Handlers ---
   const handleQrScan = async (code: string) => {
@@ -217,6 +210,40 @@ export const AppShell: React.FC = () => {
             <i className="fas fa-power-off transition-transform group-hover:rotate-12"></i>
           </button>
         </div>
+        {/* BOTÓN TEMPORAL DE TEST - PARA PROBAR EN EMULADOR/APK */}
+        {user.role === UserRole.ADMIN && (
+          <button 
+            onClick={async () => {
+              const ana = employees.find(e => e.name.toLowerCase().includes('ana'));
+              if (!ana) {
+                alert('No se encontró a Ana');
+                return;
+              }
+              const yesterday = new Date();
+              yesterday.setDate(yesterday.getDate() - 1);
+              const dayKey = yesterday.toISOString().split('T')[0];
+              const timestamp = dayKey + 'T08:00:00Z';
+              try {
+                // Limpiar previos
+                const recs = await dbService.getRecords(ana.id);
+                const yesterdayRecs = recs.filter(r => r.timestamp.startsWith(dayKey));
+                for (const r of yesterdayRecs) {
+                  await dbService.deleteAttendanceRecord(ana.id, r.id!);
+                }
+                await dbService.addRecord(ana.id, ana.name, 'TEST-APK', RecordType.IN);
+                const newRecs = await dbService.getRecords(ana.id);
+                await dbService.updateAttendanceRecord(ana.id, newRecs[0].id!, { timestamp });
+                alert('¡Reset completado para Ana! Ahora sal y entra con su cuenta.');
+                loadData(user);
+              } catch(e) {
+                alert('Error en test');
+              }
+            }}
+            className="fixed bottom-4 left-4 bg-orange-600 text-white p-4 rounded-full shadow-xl z-[300] font-black text-[10px] uppercase tracking-widest"
+          >
+            SIMULAR AYER (ANA)
+          </button>
+        )}
       </header>
 
       {/* Main Content */}
@@ -299,6 +326,28 @@ export const AppShell: React.FC = () => {
 
       {showScanner && (
         <Scanner onScan={handleQrScan} onCancel={() => setShowScanner(false)} />
+      )}
+
+      {missingOutRecord && (
+        <ManualOutModal
+          inRecordTime={missingOutRecord.timestamp}
+          onConfirm={async (time) => {
+            try {
+              const dayKey = missingOutRecord.timestamp.split('T')[0];
+              await dbService.registerManualOut(user.id, user.name, dayKey, time);
+              showFeedback('Salida registrada correctamente', 'success');
+              setMissingOutRecord(null);
+              setHasDismissedMissingOut(true);
+              loadData(user);
+            } catch (error) {
+              showFeedback('Error al registrar salida manual', 'error');
+            }
+          }}
+          onCancel={() => {
+            setMissingOutRecord(null);
+            setHasDismissedMissingOut(true);
+          }}
+        />
       )}
 
       {/* Feedback Toast */}
