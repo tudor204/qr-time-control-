@@ -2,9 +2,9 @@ import React from 'react';
 import { User, AttendanceRecord, Absence } from '../../types';
 import { ProductivityWidget } from '../Dashboard/ProductivityWidget';
 import { WorkHistory } from '../Employee/WorkHistory';
-import { calculateDurationHours, formatDuration, getGroupedRecords, getVacationSummary } from '../../utils/timeCalculations';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { calculateDurationHours, formatDuration, getGroupedRecords } from '../../utils/timeCalculations';
+import { generateDetailedPDF } from '../../utils/reportUtils';
+import { isCurrentlyOnVacation } from '../../utils/employeeStatus';
 
 interface EmployeeDashboardProps {
     user: User;
@@ -27,34 +27,37 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
     setShowScanner,
     setShowAbsenceModal
 }) => {
-    const handleExportPDF = () => {
-        const doc = new jsPDF();
-        doc.setFontSize(20);
-        doc.text('Mi Historial Laboral', 14, 22);
-        doc.setFontSize(10);
-        doc.text(`Empleado: ${user.name}`, 14, 32);
-        doc.text(`Email: ${user.email}`, 14, 38);
-        const vacSummary = getVacationSummary(user);
-        doc.text(`Vacaciones: ${vacSummary.consumed} disfrutados / ${vacSummary.total} totales`, 14, 48);
-        const empRecords = records
-            .filter(r => r.userId === user.id)
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        autoTable(doc, {
-            startY: 55,
-            head: [['Fecha', 'Hora', 'Tipo', 'Ubicación']],
-            body: empRecords.map(r => [
-                new Date(r.timestamp).toLocaleDateString(),
-                new Date(r.timestamp).toLocaleTimeString(),
-                r.type,
-                r.location || '-'
-            ]),
-        });
-        doc.save(`Historial_${user.name.replace(/\s+/g, '_')}.pdf`);
+    const handleExportPDF = async () => {
+        const empRecords = records.filter(r => r.userId === user.id);
+        const empAbsences = absences.filter(a => a.userId === user.id);
+        
+        // Determinar rango de fechas para el reporte (mes actual)
+        const now = new Date();
+        const firstDayMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        const lastDayMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+
+        try {
+            await generateDetailedPDF(
+                empRecords,
+                user.name,
+                firstDayMonth,
+                lastDayMonth,
+                empAbsences,
+                user.vacations || []
+            );
+        } catch (error) {
+            console.error('Error al exportar PDF:', error);
+            alert('Hubo un error al generar el PDF.');
+        }
     };
 
+    const isOnVacation = isCurrentlyOnVacation(user);
     const isDisabled =
+        isOnVacation ||
         absences.some(a => a.userId === user.id && a.date === new Date().toISOString().split('T')[0]) ||
         records.filter(r => r.userId === user.id && r.timestamp.startsWith(new Date().toISOString().split('T')[0])).length >= 2;
+
+    const displayStatusText = isOnVacation ? 'DE VACACIONES' : getDayStatusText;
 
     return (
         <>
@@ -187,7 +190,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
                     <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center shrink-0">
                         <i className="fas fa-qrcode text-lg"></i>
                     </div>
-                    <span className="truncate">{getDayStatusText}</span>
+                    <span className="truncate">{displayStatusText}</span>
                 </button>
             </div>
         </>

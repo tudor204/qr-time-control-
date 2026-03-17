@@ -14,6 +14,7 @@ import { useModals } from './useModals';
 import { useRoleView } from './useRoleView';
 import { LoginForm } from '../components/Auth/LoginForm';
 import { ManualOutModal } from '../components/Employee/ManualOutModal';
+import { isCurrentlyOnVacation } from '../utils/employeeStatus';
 
 export const AppShell: React.FC = () => {
   const { feedback, showFeedback } = useFeedback();
@@ -92,16 +93,16 @@ export const AppShell: React.FC = () => {
     if (user && user.role !== UserRole.ADMIN && !hasDismissedMissingOut && !missingOutRecord) {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-      
+
       // Construir la fecha en hora local para evitar desajustes de UTC
       const offset = yesterday.getTimezoneOffset() * 60000;
       const localYesterday = new Date(yesterday.getTime() - offset);
       const dayKey = localYesterday.toISOString().split('T')[0];
-      
+
       const yesterdayRecs = records.filter(r => r.userId === user.id && r.timestamp.startsWith(dayKey));
       const hasIn = yesterdayRecs.some(r => r.type === RecordType.IN);
       const hasOut = yesterdayRecs.some(r => r.type === RecordType.OUT);
-      
+
       if (hasIn && !hasOut) {
         const inRecord = yesterdayRecs.find(r => r.type === RecordType.IN);
         if (inRecord) {
@@ -115,6 +116,12 @@ export const AppShell: React.FC = () => {
   const handleQrScan = async (code: string) => {
     if (!user || code.trim() !== qrText.trim()) {
       showFeedback('QR no válido', 'error');
+      return;
+    }
+
+    // Bloqueo por vacaciones
+    if (isCurrentlyOnVacation(user)) {
+      showFeedback('Estás de vacaciones. No es posible fichar hoy.', 'error');
       return;
     }
 
@@ -210,40 +217,7 @@ export const AppShell: React.FC = () => {
             <i className="fas fa-power-off transition-transform group-hover:rotate-12"></i>
           </button>
         </div>
-        {/* BOTÓN TEMPORAL DE TEST - PARA PROBAR EN EMULADOR/APK */}
-        {user.role === UserRole.ADMIN && (
-          <button 
-            onClick={async () => {
-              const ana = employees.find(e => e.name.toLowerCase().includes('ana'));
-              if (!ana) {
-                alert('No se encontró a Ana');
-                return;
-              }
-              const yesterday = new Date();
-              yesterday.setDate(yesterday.getDate() - 1);
-              const dayKey = yesterday.toISOString().split('T')[0];
-              const timestamp = dayKey + 'T08:00:00Z';
-              try {
-                // Limpiar previos
-                const recs = await dbService.getRecords(ana.id);
-                const yesterdayRecs = recs.filter(r => r.timestamp.startsWith(dayKey));
-                for (const r of yesterdayRecs) {
-                  await dbService.deleteAttendanceRecord(ana.id, r.id!);
-                }
-                await dbService.addRecord(ana.id, ana.name, 'TEST-APK', RecordType.IN);
-                const newRecs = await dbService.getRecords(ana.id);
-                await dbService.updateAttendanceRecord(ana.id, newRecs[0].id!, { timestamp });
-                alert('¡Reset completado para Ana! Ahora sal y entra con su cuenta.');
-                loadData(user);
-              } catch(e) {
-                alert('Error en test');
-              }
-            }}
-            className="fixed bottom-4 left-4 bg-orange-600 text-white p-4 rounded-full shadow-xl z-[300] font-black text-[10px] uppercase tracking-widest"
-          >
-            SIMULAR AYER (ANA)
-          </button>
-        )}
+
       </header>
 
       {/* Main Content */}

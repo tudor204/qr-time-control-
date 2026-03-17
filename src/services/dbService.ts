@@ -44,6 +44,18 @@ export const dbService = {
   // AGREGAR REGISTRO DE ASISTENCIA (Jerárquico)
   async addRecord(userId: string, userName: string, location: string, type: RecordType) {
     try {
+      // Validación de vacaciones antes de registrar (Seguridad Backend)
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        const userData = userDoc.data() as User;
+        const today = new Date().toISOString().split('T')[0];
+        const isOnVacation = userData.vacations?.some(v => today >= v.start && today <= v.end);
+        
+        if (isOnVacation) {
+            throw new Error('Día marcado como VACACIONES. No es posible fichar hoy.');
+        }
+      }
+
       const newRecord = {
         userId,
         userName,

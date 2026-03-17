@@ -154,7 +154,8 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees, abse
                                     selectedEmployee?.name || 'Empleado',
                                     startDate || dateFilteredRecords[dateFilteredRecords.length - 1]?.timestamp.split('T')[0],
                                     endDate || dateFilteredRecords[0]?.timestamp.split('T')[0],
-                                    dateFilteredAbsences
+                                    dateFilteredAbsences,
+                                    selectedEmployee?.vacations || []
                                 )}
                                 className="w-full sm:w-auto group relative overflow-hidden bg-slate-900 text-white px-6 py-4 sm:py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-95 transition-all interactive-button"
                             >
@@ -231,7 +232,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ records, employees, abse
                                             <p className="text-[11px] text-blue-600 font-black uppercase tracking-[0.2em]">{month.year}</p>
                                         </div>
                                         <button
-                                            onClick={() => generateMonthlyPDF(month, selectedEmployee?.name || 'Empleado')}
+                                            onClick={() => generateMonthlyPDF(month, selectedEmployee?.name || 'Empleado', filteredAbsences, selectedEmployee?.vacations || [])}
                                             className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center hover:bg-blue-600 shadow-lg shadow-slate-900/10 hover:shadow-blue-600/20 transition-all duration-300"
                                             title="Exportar PDF Mensual"
                                         >

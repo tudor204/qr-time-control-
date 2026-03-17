@@ -121,14 +121,15 @@ export const calculateMonthlyStats = (records: AttendanceRecord[]) => {
 };
 
 /**
- * Genera PDF detallado de registros filtrados
+ * Genera PDF detallado de registros filtrados incluyendo vacaciones
  */
-export const generateDetailedPDF = (
+export const generateDetailedPDF = async (
     records: AttendanceRecord[],
     employeeName: string,
     startDate: string,
     endDate: string,
-    absences: Absence[] = []
+    absences: Absence[] = [],
+    vacations: { start: string; end: string }[] = []
 ) => {
     const doc = new jsPDF();
 
@@ -142,7 +143,7 @@ export const generateDetailedPDF = (
     doc.text(`Fecha de generación: ${new Date().toLocaleDateString()}`, 14, 44);
 
     // Agrupar registros por día
-    const dayGroups: { [key: string]: { in?: string; out?: string; hours: number; isAbsence?: boolean; reason?: string } } = {};
+    const dayGroups: { [key: string]: { in?: string; out?: string; hours: number; isAbsence?: boolean; isVacation?: boolean; reason?: string } } = {};
 
     records.forEach(rec => {
         const dateKey = rec.timestamp.split('T')[0];
@@ -169,15 +170,35 @@ export const generateDetailedPDF = (
         }
     });
 
+    // Añadir vacaciones a los días sin registros (pero dentro del rango del reporte)
+    const current = new Date(startDate);
+    const last = new Date(endDate);
+    while (current <= last) {
+        const dateKey = current.toISOString().split('T')[0];
+        const isOnVacation = vacations.some(v => dateKey >= v.start && dateKey <= v.end);
+        
+        if (isOnVacation && !dayGroups[dateKey]) {
+            dayGroups[dateKey] = {
+                hours: 0,
+                isVacation: true,
+                reason: 'VACACIONES'
+            };
+        }
+        current.setDate(current.getDate() + 1);
+    }
+
     const totalHours = Object.values(dayGroups).reduce((acc, day) => acc + day.hours, 0);
 
     // Table
     const tableData = Object.keys(dayGroups).sort().map(dateKey => {
         const day = dayGroups[dateKey];
-        if (day.isAbsence) {
+        if (day.isAbsence || day.isVacation) {
+            const label = day.isVacation ? 'VACACIONES' : `AUSENCIA: ${day.reason}`;
+            const color = day.isVacation ? [249, 115, 22] : [239, 68, 68]; // Naranja para vacaciones, rojo para ausencia
+            
             return [
                 new Date(dateKey).toLocaleDateString('es-ES'),
-                { content: `AUSENCIA: ${day.reason}`, colSpan: 2, styles: { halign: 'center', fontStyle: 'bold', textColor: [239, 68, 68] } },
+                { content: label, colSpan: 2, styles: { halign: 'center', fontStyle: 'bold' as any, textColor: color as any } },
                 '',
                 '0.00h'
             ];
@@ -198,15 +219,17 @@ export const generateDetailedPDF = (
         theme: 'striped'
     });
 
-    saveAndSharePDF(doc, `Reporte_${employeeName.replace(/\s+/g, '_')}_${startDate}_${endDate}.pdf`);
+    await saveAndSharePDF(doc, `Reporte_${employeeName.replace(/\s+/g, '_')}_${startDate}_${endDate}.pdf`);
 };
 
 /**
  * Genera PDF de resumen mensual
  */
-export const generateMonthlyPDF = (
+export const generateMonthlyPDF = async (
     monthStats: any,
-    employeeName: string
+    employeeName: string,
+    absences: Absence[] = [],
+    vacations: { start: string; end: string }[] = []
 ) => {
     const doc = new jsPDF();
 
@@ -218,9 +241,6 @@ export const generateMonthlyPDF = (
     doc.text(`Empleado: ${employeeName}`, 14, 32);
     doc.text(`Total de horas: ${monthStats.totalHours}h`, 14, 38);
     doc.text(`Días trabajados: ${monthStats.daysWorked}`, 14, 44);
-    doc.text(`Promedio por día: ${monthStats.avgHoursPerDay}h`, 14, 50);
-    doc.text(`Fecha de generación: ${new Date().toLocaleDateString()}`, 14, 56);
-
     // Agrupar por día
     const dayGroups: { [key: string]: { in?: string; out?: string; hours: number } } = {};
     monthStats.records.forEach((rec: AttendanceRecord) => {
@@ -237,9 +257,51 @@ export const generateMonthlyPDF = (
         day.hours = calculateDurationHours(day.in, day.out);
     });
 
+    // Añadir ausencias
+    absences.forEach(abs => {
+        if (!dayGroups[abs.date]) {
+            dayGroups[abs.date] = {
+                hours: 0,
+                // @ts-ignore
+                isAbsence: true,
+                reason: abs.predefinedReason === 'Otro' ? abs.customReason : abs.predefinedReason
+            };
+        }
+    });
+
+    // Añadir vacaciones (dentro del mes del reporte)
+    const [year, month] = monthStats.monthKey.split('-').map(Number);
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+
+    let current = new Date(startDate);
+    while (current <= endDate) {
+        const dateKey = current.toISOString().split('T')[0];
+        const isOnVacation = vacations.some(v => dateKey >= v.start && dateKey <= v.end);
+        if (isOnVacation && !dayGroups[dateKey]) {
+            dayGroups[dateKey] = {
+                hours: 0,
+                // @ts-ignore
+                isVacation: true,
+                reason: 'VACACIONES'
+            };
+        }
+        current.setDate(current.getDate() + 1);
+    }
+
     // Table
     const tableData = Object.keys(dayGroups).sort().map(dateKey => {
-        const day = dayGroups[dateKey];
+        const day = dayGroups[dateKey] as any;
+        if (day.isAbsence || day.isVacation) {
+            const label = day.isVacation ? 'VACACIONES' : `AUSENCIA: ${day.reason}`;
+            const color = day.isVacation ? [249, 115, 22] : [239, 68, 68];
+            return [
+                new Date(dateKey).toLocaleDateString('es-ES'),
+                { content: label, colSpan: 2, styles: { halign: 'center', fontStyle: 'bold' as any, textColor: color as any } },
+                '',
+                '0.00h'
+            ];
+        }
         return [
             new Date(dateKey).toLocaleDateString('es-ES'),
             day.in ? new Date(day.in).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '--:--',
@@ -251,9 +313,9 @@ export const generateMonthlyPDF = (
     autoTable(doc, {
         startY: 68,
         head: [['Fecha', 'Entrada', 'Salida', 'Horas']],
-        body: tableData,
+        body: tableData as any,
         theme: 'striped'
     });
 
-    saveAndSharePDF(doc, `Resumen_${employeeName.replace(/\s+/g, '_')}_${monthStats.monthKey}.pdf`);
+    await saveAndSharePDF(doc, `Resumen_${employeeName.replace(/\s+/g, '_')}_${monthStats.monthKey}.pdf`);
 };
