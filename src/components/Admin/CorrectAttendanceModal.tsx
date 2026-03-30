@@ -69,7 +69,7 @@ export const CorrectAttendanceModal: React.FC<CorrectAttendanceModalProps> = ({
 
                 {/* Body */}
                 <div className="p-6 sm:p-8 overflow-y-auto bg-slate-50 space-y-6 custom-scrollbar flex-1">
-                    {/* Info del turno */}
+                    {/* Info de cada turno */}
                     <div className="bg-orange-50 p-4 rounded-2xl border border-orange-200">
                         <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-2">📌 Turno Abierto</p>
                         <p className="text-sm font-bold text-slate-700">
